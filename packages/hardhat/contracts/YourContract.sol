@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+//// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 contract GoldLedger {
@@ -29,6 +29,9 @@ contract GoldLedger {
         string calldata _mineLocation,
         bytes12 _parentGoldId // Changed from bytes32 to bytes12
     ) public returns (bytes12) { // Changed from bytes32 to bytes12
+     require(bytes(_weight).length > 0, "Weight cannot be empty");
+     require(bytes(_purity).length > 0, "Purity cannot be empty");
+
         bytes12 uniqueIdentifier = bytes12(keccak256(abi.encodePacked(block.timestamp, msg.sender, ++totalRegistrations))); // Changed from bytes32 to bytes12
         
         goldRegistry[uniqueIdentifier] = GoldDetails({
