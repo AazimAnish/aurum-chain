@@ -13,6 +13,7 @@ import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
 import { useInitializeNativeCurrencyPrice } from "~~/hooks/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
+import { AnonAadhaarProvider } from "@anon-aadhaar/react";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   useInitializeNativeCurrencyPrice();
@@ -49,6 +50,10 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
+      <AnonAadhaarProvider
+          _useTestAadhaar={false}
+          _appName="Aurum Chain"
+        >
         <ProgressBar height="3px" color="#2299dd" />
         <RainbowKitProvider
           avatar={BlockieAvatar}
@@ -58,6 +63,7 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
             <ScaffoldEthApp>{children}</ScaffoldEthApp>
           </ThirdwebProvider>
         </RainbowKitProvider>
+        </AnonAadhaarProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
