@@ -87,7 +87,10 @@ export const useScaffoldEventHistory = <
   });
   const [isFirstRender, setIsFirstRender] = useState(true);
 
-  const { data: blockNumber } = useBlockNumber({ watch: watch, chainId: targetNetwork.id });
+  const { data: blockNumber } = useBlockNumber({ 
+    watch: false,
+    chainId: targetNetwork.id 
+  });
 
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
 

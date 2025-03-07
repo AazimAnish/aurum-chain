@@ -1,9 +1,9 @@
 "use client";
 
 import { Address, formatEther } from "viem";
+import { useBalance } from "wagmi";
 import { useDisplayUsdMode } from "~~/hooks/scaffold-eth/useDisplayUsdMode";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
-import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 import { useGlobalState } from "~~/services/store/store";
 
 type BalanceProps = {
@@ -24,8 +24,9 @@ export const Balance = ({ address, className = "", usdMode }: BalanceProps) => {
     data: balance,
     isError,
     isLoading,
-  } = useWatchBalance({
+  } = useBalance({
     address,
+    chainId: targetNetwork.id,
   });
 
   const { displayUsdMode, toggleDisplayUsdMode } = useDisplayUsdMode({ defaultUsdMode: usdMode });

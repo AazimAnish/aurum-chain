@@ -27,11 +27,20 @@ export const useScaffoldWatchContractEvent = <
   const addIndexedArgsToLogs = (logs: Log[]) => logs.map(addIndexedArgsToEvent);
   const listenerWithIndexedArgs = (logs: Log[]) => onLogs(addIndexedArgsToLogs(logs) as Parameters<typeof onLogs>[0]);
 
-  return useWatchContractEvent({
-    address: deployedContractData?.address,
-    abi: deployedContractData?.abi as Abi,
-    chainId: targetNetwork.id,
-    onLogs: listenerWithIndexedArgs,
-    eventName,
-  });
+  try {
+    return useWatchContractEvent({
+      address: deployedContractData?.address,
+      abi: deployedContractData?.abi as Abi,
+      chainId: targetNetwork.id,
+      onLogs: listenerWithIndexedArgs,
+      eventName,
+      onError: (error) => {
+        console.error("Error watching contract event:", error);
+      },
+    });
+  } catch (error) {
+    console.error("Failed to watch contract event:", error);
+    // Return a null value that matches the structure of useWatchContractEvent return type
+    return {};
+  }
 };

@@ -91,7 +91,14 @@ const Home: NextPage = () => {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image src={greekMobile} alt="Greek Mobile" layout="responsive" objectFit="cover" />
+        <Image 
+          src={greekMobile} 
+          alt="Greek Mobile" 
+          width={0}
+          height={0}
+          sizes="100vw"
+          style={{ width: '100%', height: 'auto' }}
+        />
       </motion.div>
 
       <motion.div
@@ -100,7 +107,14 @@ const Home: NextPage = () => {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image src={headsetGirl} alt="Headset Girl" layout="responsive" objectFit="cover" />
+        <Image 
+          src={headsetGirl} 
+          alt="Headset Girl" 
+          width={0}
+          height={0}
+          sizes="100vw"
+          style={{ width: '100%', height: 'auto' }}
+        />
       </motion.div>
 
       <motion.footer
