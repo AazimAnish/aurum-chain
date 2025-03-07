@@ -1,15 +1,34 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import base from "../../public/base.jpg";
+import greekMobile from "../../public/greekMobile.png";
+import headsetGirl from "../../public/headsetGirl.png";
+import { Button } from "../../~/components/ui/button";
+import { motion, useAnimation } from "framer-motion";
+import type { NextPage } from "next";
 
-export default function RootPage() {
-  const router = useRouter();
+const Home: NextPage = () => {
+  const titleControls = useAnimation();
+  const [bgColor, setBgColor] = useState("bg-yellow-400");
+  const [textColor, setTextColor] = useState("text-black");
 
   useEffect(() => {
-    router.push("/Home");
-  }, [router]);
-  
+    const animateColors = async () => {
+      for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setBgColor("bg-black");
+        setTextColor("text-yellow-400");
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setBgColor("bg-yellow-400");
+        setTextColor("text-black");
+      }
+      setBgColor("bg-black");
+      setTextColor("text-yellow-400");
+    };
+
     const animateTitle = async () => {
       await titleControls.start({ scale: [1, 1.1, 0.9, 1.05, 1], transition: { duration: 0.5 } });
     };
@@ -57,7 +76,7 @@ export default function RootPage() {
           Because nothing says &apos;trust&apos; like onchain tracked bling ✨
         </motion.p>
         <div className="mt-8 flex justify-center gap-20">
-          <Link href="/Registration">
+          <Link href="/Login">
             <Button>Register The Gold</Button>
           </Link>
           <Link href="/Track">
@@ -72,14 +91,7 @@ export default function RootPage() {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image 
-          src={greekMobile} 
-          alt="Greek Mobile" 
-          width={0}
-          height={0}
-          sizes="100vw"
-          style={{ width: '100%', height: 'auto' }}
-        />
+        <Image src={greekMobile} alt="Greek Mobile" layout="responsive" objectFit="cover" />
       </motion.div>
 
       <motion.div
@@ -88,14 +100,7 @@ export default function RootPage() {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image 
-          src={headsetGirl} 
-          alt="Headset Girl" 
-          width={0}
-          height={0}
-          sizes="100vw"
-          style={{ width: '100%', height: 'auto' }}
-        />
+        <Image src={headsetGirl} alt="Headset Girl" layout="responsive" objectFit="cover" />
       </motion.div>
 
       <motion.footer

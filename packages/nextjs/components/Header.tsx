@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Bars3Icon, BugAntIcon } from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
+import { LogInWithAnonAadhaar } from "@anon-aadhaar/react";
 import { accountAbstraction, client } from "../app/constants";
 import { ConnectButton } from "thirdweb/react";
 
@@ -102,6 +103,13 @@ export const Header = () => {
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
           <HeaderMenuLinks />
         </ul>
+      </div>
+         <div>
+      {/* <LogInWithAnonAadhaar nullifierSeed={1234} /> */}
+      </div> 
+      <div className="navbar-end flex-grow mr-4">
+        <RainbowKitCustomConnectButton />
+        <FaucetButton />
       </div>
       <div >
 				<ConnectButton 

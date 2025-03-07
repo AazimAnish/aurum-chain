@@ -48,46 +48,63 @@ const GoldRegistration = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const args = [
-      formData.weight,
-      formData.purity,
-      formData.description,
-      formData.certificationDetails,
-      formData.certificationDate,
-      formData.mineLocation,
-      formData.parentGoldId ? (formData.parentGoldId as `0x${string}`) : "0x000000000000000000000000",
-    ] as const;
+    try {
+      const args = [
+        formData.weight,
+        formData.purity,
+        formData.description,
+        formData.certificationDetails,
+        formData.certificationDate,
+        formData.mineLocation,
+        formData.parentGoldId ? (formData.parentGoldId as `0x${string}`) : "0x000000000000000000000000",
+      ] as const;
 
-    const result = await writeGoldLedgerAsync({
-      functionName: "registerGold",
-      args,
-    });
-    if (!result) {
-      throw new Error("Failed to write to contract");
-    }
+      // Write to contract and get transaction hash
+      const txHash = await writeGoldLedgerAsync({
+        functionName: "registerGold",
+        args,
+      });
 
-    const publicClient = createPublicClient({
-      chain: hardhat,
-      transport: http(),
-    });
-    console.log("Public Client", publicClient);
-    // Wait for transaction receipt
-    const receipt = await waitForTransactionReceipt(publicClient, {
-      hash: result,
-      timeout: 240000,
-    });
+      if (!txHash) {
+        throw new Error("Failed to write to contract");
+      }
 
-    if (receipt.logs && receipt.logs.length > 0) {
-      const log = receipt.logs[0];
+      console.log("Transaction hash:", txHash);
 
-      console.log("Gold registered successfully");
+      const publicClient = createPublicClient({
+        chain: hardhat,
+        transport: http(),
+      });
 
-      setHallmarkId(log.topics?.[1]?.slice(0, 26) ?? "No identifier found");
-      setShowSuccess(true);
+      // Wait for transaction receipt
+      const receipt = await waitForTransactionReceipt(publicClient, {
+        hash: txHash,
+        timeout: 240000,
+      });
 
-      console.log("Hallmark ID:", hallmarkId);
-      console.log("Show Success:", showSuccess);
-      console.log("Unique Identifier", log.topics?.[1]?.slice(0, 26) ?? "No identifier found");
+      console.log("Transaction receipt:", receipt);
+
+      if (receipt.logs && receipt.logs.length > 0) {
+        const log = receipt.logs[0];
+        if (log.topics && log.topics.length > 1) {
+          const identifier = log.topics[1];
+          if (identifier) {
+            setHallmarkId(identifier.slice(0, 26));
+            setShowSuccess(true);
+            console.log("Hallmark ID set to:", identifier.slice(0, 26));
+          } else {
+            console.error("Invalid identifier in log topics");
+          }
+        } else {
+          console.error("No topics found in the log");
+        }
+      } else {
+        console.error("No logs found in receipt");
+      }
+    } catch (error) {
+      console.error("Error during registration:", error);
+      // Here you might want to add some error state handling
+      // setError(error.message);
     }
   };
 
@@ -198,8 +215,11 @@ const GoldRegistration = () => {
         </CardFooter>
       </Card>
       {showSuccess && (
-        <Card className="mt-4 p-2 w-1/3">
-          <CardContent className="text-white pl-8 flex items-center">
+      <div className="flex items-center space-x-4">
+  <div className="flex-grow"> 
+    <Card className="mt-4 p-2">
+        <CardContent className="text-white pl-8 flex items-center">
+          <div className="flex items-center">
             <p className="font-mono mr-2">Hallmark ID: {hallmarkId}</p>
             <Clipboard
               className="h-5 w-5 cursor-pointer text-gray-300 hover:text-white"
@@ -209,10 +229,25 @@ const GoldRegistration = () => {
                 setTimeout(() => setCopySuccess(false), 2000); // Reset success message after 2 seconds
               }}
             />
-          </CardContent>
-          {copySuccess && <div className="text-green-500 text-sm pl-8">Copied to clipboard!</div>}
-        </Card>
-      )}
+          </div>
+         
+        </CardContent>
+        {copySuccess && <div className="text-green-500 text-sm pl-8">Copied to clipboard!</div>}
+        
+      </Card>
+      </div>
+  
+      <Button
+            onClick={() => window.open(`/Track?id=${hallmarkId}`, '_blank')}
+            className="ml-4 hover:bg-yellow-600 text-black  "
+          >
+            Track
+      </Button>
+      </div>
+      
+     )} 
+       
+         
     </div>
   );
 };
