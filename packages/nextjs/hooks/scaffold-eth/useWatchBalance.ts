@@ -1,21 +1,21 @@
-import { useEffect } from "react";
-import { useTargetNetwork } from "./useTargetNetwork";
-import { useQueryClient } from "@tanstack/react-query";
-import { UseBalanceParameters, useBalance, useBlockNumber } from "wagmi";
+import { UseBalanceParameters, useBalance } from "wagmi";
 
 /**
- * Wrapper around wagmi's useBalance hook. Updates data on every block change.
+ * Safe wrapper around wagmi's useBalance hook to avoid provider.on errors.
  */
 export const useWatchBalance = (useBalanceParameters: UseBalanceParameters) => {
-  const { targetNetwork } = useTargetNetwork();
-  const queryClient = useQueryClient();
-  const { data: blockNumber } = useBlockNumber({ watch: true, chainId: targetNetwork.id });
-  const { queryKey, ...restUseBalanceReturn } = useBalance(useBalanceParameters);
-
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockNumber]);
-
-  return restUseBalanceReturn;
+  try {
+    // Use useBalance without adding any extra parameters that could cause issues
+    return useBalance(useBalanceParameters);
+  } catch (error) {
+    console.error("Error in useWatchBalance:", error);
+    // Return a placeholder result that matches the structure of useBalance return type
+    return {
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      status: "error",
+      error: error instanceof Error ? error : new Error(String(error))
+    } as ReturnType<typeof useBalance>;
+  }
 };

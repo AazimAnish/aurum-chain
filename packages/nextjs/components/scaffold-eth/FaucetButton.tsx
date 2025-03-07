@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { createWalletClient, http, parseEther } from "viem";
 import { hardhat } from "viem/chains";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { useTransactor } from "~~/hooks/scaffold-eth";
-import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 
 // Number of ETH faucet sends to an address
 const NUM_OF_ETH = "1";
@@ -19,11 +18,16 @@ const localWalletClient = createWalletClient({
 
 /**
  * FaucetButton button which lets you grab eth.
+ * Only visible when an account is connected and on a local chain.
  */
 export const FaucetButton = () => {
-  const { address, chain: ConnectedChain } = useAccount();
+  const { address, chain: ConnectedChain, isConnected } = useAccount();
 
-  const { data: balance } = useWatchBalance({ address });
+  // Use useBalance directly with watch: false to avoid provider.on errors
+  const { data: balance } = useBalance({
+    address,
+    chainId: ConnectedChain?.id,
+  });
 
   const [loading, setLoading] = useState(false);
 
@@ -45,28 +49,22 @@ export const FaucetButton = () => {
     }
   };
 
-  // Render only on local chain
-  if (ConnectedChain?.id !== hardhat.id) {
+  // Only render when:
+  // 1. User is connected (has an address)
+  // 2. We're on the local hardhat chain
+  if (!isConnected || !address || ConnectedChain?.id !== hardhat.id) {
     return null;
   }
 
-  const isBalanceZero = balance && balance.value === 0n;
-
   return (
-    <div
-      className={
-        !isBalanceZero
-          ? "ml-1"
-          : "ml-1 tooltip tooltip-bottom tooltip-secondary tooltip-open font-bold before:left-auto before:transform-none before:content-[attr(data-tip)] before:right-0"
-      }
-      data-tip="Grab funds from faucet"
-    >
-      <button className="btn btn-secondary btn-sm px-2 rounded-full" onClick={sendETH} disabled={loading}>
-        {!loading ? (
-          <BanknotesIcon className="h-4 w-4" />
-        ) : (
-          <span className="loading loading-spinner loading-xs"></span>
-        )}
+    <div className="flex flex-col gap-1 items-center">
+      <button
+        className={`btn btn-primary btn-sm px-2 rounded-full ${loading ? "loading" : ""}`}
+        onClick={sendETH}
+        disabled={loading}
+      >
+        {!loading && <BanknotesIcon className="h-4 w-4" />}
+        <span>Faucet</span>
       </button>
     </div>
   );
