@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { AnonAadhaarProvider } from "@anon-aadhaar/react";
 import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { BlockieAvatar } from "~~/components/scaffold-eth";
 import { useInitializeNativeCurrencyPrice } from "~~/hooks/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
+// Separate the app component to reduce re-renders
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   useInitializeNativeCurrencyPrice();
 
@@ -24,20 +25,34 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
         <main className="relative flex flex-col flex-1">{children}</main>
         <Footer />
       </div>
-      <Toaster />
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#ffffff',
+            color: '#333333',
+          },
+        }}
+      />
     </>
   );
 };
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
+// Configure query client with optimized settings
 export const ScaffoldEthAppWithProviders = ({ children }: { children: React.ReactNode }) => {
+  // Create a new QueryClient instance for each session
+  const queryClient = useMemo(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        staleTime: 60000, // 1 minute
+        gcTime: 300000, // 5 minutes (newer name for cacheTime in React Query v5)
+        retry: 1, // Only retry once
+      },
+    },
+  }), []);
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -45,7 +60,15 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
           _useTestAadhaar={false}
           _appName="Aurum Chain"
         >
-          <ProgressBar height="3px" color="#ECBD45" />
+          <ProgressBar 
+            height="3px" 
+            color="#ECBD45" 
+            options={{ 
+              showSpinner: false,
+              minimum: 0.25, // Start showing progress at 25%
+            }} 
+            shallowRouting // Better performance with shallow routing
+          />
           <RainbowKitProvider
             avatar={BlockieAvatar}
             theme={lightTheme()}

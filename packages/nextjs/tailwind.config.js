@@ -9,6 +9,12 @@ module.exports = {
   plugins: [require("daisyui"), require("tailwindcss-animate")],
   darkTheme: "dark",
   darkMode: ["selector", "[data-theme='dark']", "class"],
+  // Reduce file size in production
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
+  // Enable JIT for faster builds
+  mode: 'jit',
   // DaisyUI theme colors
   daisyui: {
     themes: [

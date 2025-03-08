@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -23,6 +23,7 @@ interface DotPatternProps extends React.SVGProps<SVGSVGElement> {
   cr?: number;
   className?: string;
   glow?: boolean;
+  densityFactor?: number; // Added density factor to control dot density
   [key: string]: unknown;
 }
 
@@ -31,6 +32,7 @@ interface DotPatternProps extends React.SVGProps<SVGSVGElement> {
  *
  * A React component that creates an animated or static dot pattern background using SVG.
  * The pattern automatically adjusts to fill its container and can optionally display glowing dots.
+ * Optimized for performance with reduced dot density and memoization.
  */
 export function DotPattern({
   width = 16,
@@ -42,6 +44,7 @@ export function DotPattern({
   cr = 1,
   className,
   glow = false,
+  densityFactor = 0.5, // Default density factor (higher = fewer dots)
   ...props
 }: DotPatternProps) {
   const id = useId();
@@ -49,35 +52,83 @@ export function DotPattern({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return; // Skip on server-side rendering
+    
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setDimensions({ width, height });
       }
     };
-
+    
+    // Run once on mount
     updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
+    
+    // Debounce resize handler for better performance
+    let timeoutId: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateDimensions, 200); // Increased debounce time for better performance
+    };
+    
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
-  const dots = Array.from(
-    {
-      length:
-        Math.ceil(dimensions.width / width) *
-        Math.ceil(dimensions.height / height),
-    },
-    (_, i) => {
-      const col = i % Math.ceil(dimensions.width / width);
-      const row = Math.floor(i / Math.ceil(dimensions.width / width));
-      return {
-        x: col * width + cx + xOffset,
-        y: row * height + cy + yOffset,
-        delay: Math.random() * 5,
-        duration: Math.random() * 3 + 2,
-      };
-    },
-  );
+  // Memoize dots to prevent unnecessary recalculations
+  const dots = useMemo(() => {
+    // Skip calculation if no dimensions yet
+    if (dimensions.width === 0 || dimensions.height === 0) return [];
+    
+    // Calculate a reduced number of dots for better performance
+    const adjustedWidth = width * densityFactor;
+    const adjustedHeight = height * densityFactor;
+    
+    const maxDotCount = 350; // Reduced maximum dot count for better performance
+    
+    const cols = Math.ceil(dimensions.width / adjustedWidth);
+    const rows = Math.ceil(dimensions.height / adjustedHeight);
+    const totalDots = cols * rows;
+    
+    // If too many dots, increase the spacing to reduce count
+    const scaleFactor = totalDots > maxDotCount ? Math.ceil(totalDots / maxDotCount) : 1;
+    const finalCols = Math.ceil(cols / scaleFactor);
+    const finalRows = Math.ceil(rows / scaleFactor);
+    const finalWidth = adjustedWidth * scaleFactor;
+    const finalHeight = adjustedHeight * scaleFactor;
+    
+    return Array.from(
+      { length: finalCols * finalRows },
+      (_, i) => {
+        const col = i % finalCols;
+        const row = Math.floor(i / finalCols);
+        return {
+          x: col * finalWidth + cx + xOffset,
+          y: row * finalHeight + cy + yOffset,
+          delay: Math.random() * 2, // Reduced delay range
+          duration: Math.random() * 2 + 1.5, // Slightly reduced duration
+        };
+      },
+    );
+  }, [dimensions, width, height, cx, cy, xOffset, yOffset, densityFactor]);
+
+  // Skip rendering if dimensions are not yet available
+  if (dimensions.width === 0 || dimensions.height === 0) {
+    return (
+      <svg
+        ref={containerRef}
+        aria-hidden="true"
+        className={cn("pointer-events-none absolute inset-0 h-full w-full", className)}
+        {...props}
+      />
+    );
+  }
+  
+  // For better performance, don't animate too many dots
+  const shouldAnimate = dots.length < 200;
 
   return (
     <svg
@@ -103,17 +154,17 @@ export function DotPattern({
           r={cr}
           fill={glow ? `url(#${id}-gradient)` : "currentColor"}
           className="text-neutral-400/80"
-          initial={glow ? { opacity: 0.4, scale: 1 } : {}}
+          initial={shouldAnimate && glow ? { opacity: 0.4, scale: 1 } : {}}
           animate={
-            glow
+            shouldAnimate && glow
               ? {
                   opacity: [0.4, 1, 0.4],
-                  scale: [1, 1.5, 1],
+                  scale: [1, 1.3, 1], // Reduced scale change for better performance
                 }
               : {}
           }
           transition={
-            glow
+            shouldAnimate && glow
               ? {
                   duration: dot.duration,
                   repeat: Infinity,
