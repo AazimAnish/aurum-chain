@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "~~/~/components/ui/button";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 interface GoldDetails {
@@ -120,12 +121,14 @@ const GoldSearch = () => {
                   }
                 }}
               />
-              <button 
+              <Button 
                 onClick={handleSearch}
-                className="action-button bg-[#ECBD45] text-black hover:bg-[#D9AD3C] sm:flex-shrink-0"
+                variant="default"
+                size="lg"
+                className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C] sm:flex-shrink-0"
               >
                 Search
-              </button>
+              </Button>
             </div>
 
             {isLoading && (

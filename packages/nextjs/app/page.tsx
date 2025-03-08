@@ -11,7 +11,7 @@ import {
   BuildingLibraryIcon 
 } from "@heroicons/react/24/outline";
 import { DotPattern } from "~~/components/ui/DotPattern";
-import { Button } from "../~/components/ui/button";
+import { Button } from "~~/~/components/ui/button";
 // import greekMobile from "../public/greekMobile.png";
 // import headsetGirl from "../public/headsetGirl.png";
 // import { motion } from "framer-motion";
@@ -70,7 +70,7 @@ const CustomStyle = () => (
     }
     
     .dark-bg {
-      background-color: #f0f0f;
+      background-color: #0f0f0f;
     }
   `}</style>
 );
@@ -104,12 +104,12 @@ const CustomHero = () => {
             </p>
           </div>
           <div className="flex flex-row gap-3">
-            <Link href="/Registration">
+            <Link href="/Registration" legacyBehavior passHref>
               <Button variant="outline" size="lg" className="border-black text-black hover:bg-gray-50">
                 Register Gold
               </Button>
             </Link>
-            <Link href="/Track">
+            <Link href="/Track" legacyBehavior passHref>
               <Button variant="default" size="lg" className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C]">
                 Track Gold
               </Button>
@@ -127,7 +127,7 @@ const CustomFeature = () => {
       <div className="container mx-auto relative z-10">
         <div className="flex flex-col gap-8 lg:gap-16 relative">
           <div className="text-center">
-            <Button variant="outline" size="lg" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 mx-auto">
+            <Button variant="outline" size="lg" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
               Platform Features
             </Button>
           </div>
@@ -188,12 +188,12 @@ const CustomCTA = () => {
             </p>
           </div>
           <div className="flex flex-row gap-4">
-            <Link href="/Registration">
+            <Link href="/Registration" legacyBehavior passHref>
               <Button variant="outline" size="lg" className="border-black text-black hover:bg-gray-50">
                 Register Gold
               </Button>
             </Link>
-            <Link href="/Track">
+            <Link href="/Track" legacyBehavior passHref>
               <Button variant="default" size="lg" className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C]">
                 Track Gold
               </Button>
@@ -257,7 +257,7 @@ const Home = () => {
         <CustomCTA />
       </main>
 
-      <footer className="w-full py-8 border-t">
+      {/* <footer className="w-full py-8 border-t">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
@@ -270,7 +270,7 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 };
