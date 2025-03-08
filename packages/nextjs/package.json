@@ -15,6 +15,7 @@
     "vercel:yolo": "vercel --build-env NEXT_PUBLIC_IGNORE_BUILD_ERROR=true"
   },
   "dependencies": {
+    "@datastax/astra-db-ts": "^1.5.0",
     "@heroicons/react": "^2.1.5",
     "@radix-ui/react-icons": "^1.3.2",
     "@radix-ui/react-label": "^2.1.0",
@@ -24,6 +25,7 @@
     "@tanstack/react-query": "^5.28.6",
     "@uniswap/sdk-core": "^4.0.1",
     "@uniswap/v2-sdk": "^3.0.1",
+    "ai": "^4.1.51",
     "blo": "^1.0.1",
     "burner-connector": "^0.0.8",
     "class-variance-authority": "^0.7.1",
@@ -34,6 +36,7 @@
     "next": "^14.2.11",
     "next-nprogress-bar": "^2.3.13",
     "next-themes": "^0.3.0",
+    "openai": "^4.41.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.3.1",
     "react-copy-to-clipboard": "^5.1.0",
