@@ -24,7 +24,7 @@ export const FaucetButton = () => {
   const { address, chain: ConnectedChain, isConnected } = useAccount();
 
   // Use useBalance directly with watch: false to avoid provider.on errors
-  const { data: balance } = useBalance({
+  useBalance({
     address,
     chainId: ConnectedChain?.id,
   });

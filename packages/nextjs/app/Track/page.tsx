@@ -1,10 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "../../~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../~/components/ui/card";
-import { Input } from "../../~/components/ui/input";
-import { Label } from "../../~/components/ui/label";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 interface GoldDetails {
@@ -28,27 +24,27 @@ const GoldSearch = () => {
     data: allGoldDetails,
     isLoading,
     error,
-    refetch,
   } = useScaffoldReadContract({
     contractName: "GoldLedger",
     functionName: "getAllGoldDetails",
   });
 
   useEffect(() => {
-    if (searchPerformed && searchId !== "") {
-      refetch();
+    // Extract gold ID from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const idFromUrl = urlParams.get("id");
+    if (idFromUrl) {
+      setSearchId(idFromUrl);
+      setSearchPerformed(true);
     }
-  }, [searchPerformed, searchId, refetch]);
+  }, []);
 
   useEffect(() => {
-    if (allGoldDetails && searchId) {
-      console.log("Result from smart contract:", allGoldDetails);
-      const matchedDetails = (allGoldDetails as unknown as GoldDetails[]).find(
-        details => details.uniqueIdentifier === searchId,
-      );
-      setMatchedGoldDetails(matchedDetails || null);
+    if (allGoldDetails && searchPerformed) {
+      const foundGold = allGoldDetails.find((gold: GoldDetails) => gold.uniqueIdentifier === searchId);
+      setMatchedGoldDetails(foundGold || null);
     }
-  }, [allGoldDetails, searchId]);
+  }, [allGoldDetails, searchId, searchPerformed]);
 
   const handleSearch = () => {
     if (searchId) {
@@ -57,78 +53,108 @@ const GoldSearch = () => {
   };
 
   const renderGoldDetails = (details: GoldDetails) => (
-    <Card className="p-4">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">Gold Details</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="font-bold">Weight:</Label>
-            <p>{details.weight}</p>
+    <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md border border-gray-100 mt-6 overflow-hidden">
+      <div className="p-6 border-b border-gray-100">
+        <h3 className="text-xl font-bold goldman-font">Gold Details</h3>
+      </div>
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="form-group">
+            <label className="form-label">Weight</label>
+            <p className="text-gray-900">{details.weight}</p>
           </div>
-          <div>
-            <Label className="font-bold">Purity:</Label>
-            <p>{details.purity}</p>
+          <div className="form-group">
+            <label className="form-label">Purity</label>
+            <p className="text-gray-900">{details.purity}</p>
           </div>
-          <div>
-            <Label className="font-bold">Description:</Label>
-            <p>{details.description}</p>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <p className="text-gray-900">{details.description}</p>
           </div>
-          <div>
-            <Label className="font-bold">Certification Details:</Label>
-            <p>{details.certificationDetails}</p>
+          <div className="form-group">
+            <label className="form-label">Certification Details</label>
+            <p className="text-gray-900">{details.certificationDetails}</p>
           </div>
-          <div>
-            <Label className="font-bold">Certification Date:</Label>
-            <p>{details.certificationDate}</p>
+          <div className="form-group">
+            <label className="form-label">Certification Date</label>
+            <p className="text-gray-900">{details.certificationDate}</p>
           </div>
-          <div>
-            <Label className="font-bold">Mine Location:</Label>
-            <p>{details.mineLocation}</p>
+          <div className="form-group">
+            <label className="form-label">Mine Location</label>
+            <p className="text-gray-900">{details.mineLocation}</p>
           </div>
-          <div>
-            <Label className="font-bold">Parent Gold ID:</Label>
-            <p>{details.parentGoldId}</p>
+          <div className="form-group">
+            <label className="form-label">Parent Gold ID</label>
+            <p className="text-gray-900">{details.parentGoldId || "None"}</p>
           </div>
-          <div>
-            <Label className="font-bold">Unique Identifier:</Label>
-            <p>{details.uniqueIdentifier}</p>
+          <div className="form-group">
+            <label className="form-label">Unique Identifier</label>
+            <p className="text-gray-900 font-mono">{details.uniqueIdentifier}</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8 text-white">
-      <Card className="w-full max-w-2xl p-4">
-        <CardHeader>
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-center text-white">Gold Search</CardTitle>
-          <CardDescription className="text-center text-white">
-            Enter a unique identifier to search for gold details
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Enter Unique Identifier"
-              value={searchId}
-              onChange={e => setSearchId(e.target.value)}
-              className="text-white w-full"
-            />
-            <Button onClick={handleSearch} className="text-black">
-              Search
-            </Button>
+    <div className="container mx-auto pt-8 pb-20">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h1 className="text-3xl font-bold text-center goldman-font">Gold Tracking</h1>
+            <p className="text-center text-gray-600 mb-4">Search for gold details using the unique identifier</p>
           </div>
-          {isLoading && <p className="mt-4">Loading...</p>}
-          {error && <p className="mt-4 text-red-500">Error: {error.message}</p>}
-          {searchPerformed && !isLoading && !error && !matchedGoldDetails && (
-            <p className="mt-4">No gold details found for the given identifier.</p>
-          )}
-          {matchedGoldDetails && <div className="mt-4">{renderGoldDetails(matchedGoldDetails)}</div>}
-        </CardContent>
-      </Card>
+          
+          <div className="p-6">
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <input
+                type="text"
+                id="searchId"
+                placeholder="Enter Gold ID"
+                value={searchId}
+                onChange={e => setSearchId(e.target.value)}
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+              />
+              <button 
+                onClick={handleSearch}
+                className="action-button bg-[#ECBD45] text-black hover:bg-[#D9AD3C] sm:flex-shrink-0"
+              >
+                Search
+              </button>
+            </div>
+
+            {isLoading && (
+              <div className="text-center p-8">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#ECBD45] border-r-transparent align-[-0.125em]"></div>
+                <p className="mt-2 text-gray-600">Loading...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700">Error loading data. Please try again.</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {searchPerformed && !isLoading && !error && (
+          <div>
+            {matchedGoldDetails ? (
+              renderGoldDetails(matchedGoldDetails)
+            ) : (
+              <div className="text-center p-6 bg-yellow-50 border border-yellow-200 rounded-lg mt-6">
+                <p className="text-yellow-700">No gold found with this ID. Please try another identifier.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

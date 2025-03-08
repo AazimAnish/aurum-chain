@@ -4,12 +4,9 @@ import React, { useCallback, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bars3Icon, BugAntIcon } from "@heroicons/react/24/outline";
-import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
-import { LogInWithAnonAadhaar } from "@anon-aadhaar/react";
-import { accountAbstraction, client } from "../app/constants";
-import { ConnectButton } from "thirdweb/react";
+import { ThirdwebScaffoldConnector } from "~~/components/scaffold-eth/ThirdwebScaffoldConnector";
 
 type HeaderMenuLink = {
   label: string;
@@ -23,9 +20,16 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Register Gold",
+    href: "/Registration",
+  },
+  {
+    label: "Track Gold",
+    href: "/Track",
+  },
+  {
     label: "Debug Contracts",
     href: "/debug",
-    icon: <BugAntIcon className="h-4 w-4" />,
   },
 ];
 
@@ -34,19 +38,20 @@ export const HeaderMenuLinks = () => {
 
   return (
     <>
-      {menuLinks.map(({ label, href, icon }) => {
+      {menuLinks.map(({ label, href }) => {
         const isActive = pathname === href;
         return (
-          <li key={href}>
+          <li key={href} className="flex">
             <Link
               href={href}
               passHref
-              className={`${
-                isActive ? "bg-secondary shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
+              className={`goldman-font px-4 py-2 text-sm transition-colors rounded-md ${
+                isActive 
+                  ? "bg-[#ECBD45] text-black font-medium" 
+                  : "text-gray-700 hover:text-black hover:bg-gray-100"
+              }`}
             >
-              {icon}
-              <span>{label}</span>
+              {label}
             </Link>
           </li>
         );
@@ -67,56 +72,51 @@ export const Header = () => {
   );
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 flex-shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
-      <div className="navbar-start w-auto lg:w-1/2">
-        <div className="lg:hidden dropdown" ref={burgerMenuRef}>
-          <label
-            tabIndex={0}
-            className={`ml-1 btn btn-ghost ${isDrawerOpen ? "hover:bg-secondary" : "hover:bg-transparent"}`}
-            onClick={() => {
-              setIsDrawerOpen(prevIsOpenState => !prevIsOpenState);
-            }}
-          >
-            <Bars3Icon className="h-1/2" />
-          </label>
-          {isDrawerOpen && (
-            <ul
-              tabIndex={0}
-              className="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52"
-              onClick={() => {
-                setIsDrawerOpen(false);
-              }}
-            >
+    <header className="sticky top-0 w-full bg-white z-50 shadow-sm border-b border-gray-100">
+      <div className="container mx-auto flex justify-between items-center py-3 px-4 sm:px-6">
+        <div className="flex items-center">
+          <Link href="/" passHref className="flex items-center gap-2 mr-6">
+            <div className="flex relative w-10 h-10">
+              <Image alt="Aurum-Chain logo" className="cursor-pointer" fill src="/logo.svg" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold leading-tight goldman-font text-gray-900">AURUM-CHAIN</span>
+              <span className="text-xs text-gray-600">Gold Tracking Platform</span>
+            </div>
+          </Link>
+          
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex">
+            <ul className="flex space-x-1">
               <HeaderMenuLinks />
             </ul>
+          </nav>
+        </div>
+        
+        {/* Mobile Navigation */}
+        <div className="md:hidden" ref={burgerMenuRef}>
+          <button
+            className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+            onClick={() => setIsDrawerOpen(prev => !prev)}
+            aria-label="Toggle navigation menu"
+          >
+            <Bars3Icon className="h-6 w-6 text-gray-700" />
+          </button>
+          
+          {isDrawerOpen && (
+            <div className="absolute top-full left-0 right-0 bg-white shadow-md p-4 border-t border-gray-100 z-50">
+              <ul className="flex flex-col space-y-2" onClick={() => setIsDrawerOpen(false)}>
+                <HeaderMenuLinks />
+              </ul>
+            </div>
           )}
         </div>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0">
-          <div className="flex relative w-10 h-10">
-            <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold leading-tight">Scaffold-ETH</span>
-            <span className="text-xs">Ethereum dev stack</span>
-          </div>
-        </Link>
-        <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
-          <HeaderMenuLinks />
-        </ul>
+        
+        {/* Connect Button */}
+        <div className="flex items-center">
+          <ThirdwebScaffoldConnector />
+        </div>
       </div>
-         <div>
-      {/* <LogInWithAnonAadhaar nullifierSeed={1234} /> */}
-      </div> 
-      <div className="navbar-end flex-grow mr-4">
-        <RainbowKitCustomConnectButton />
-        <FaucetButton />
-      </div>
-      <div >
-				<ConnectButton 
-					client={client}
-					accountAbstraction={accountAbstraction}
-				/>
-			</div>
-    </div>
+    </header>
   );
 };

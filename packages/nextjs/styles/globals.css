@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=GFS+Didot&display=swap');
+
 :root,
 [data-theme] {
   background: oklch(var(--b2));
@@ -29,6 +33,69 @@ p {
 
 .btn.btn-ghost {
   @apply shadow-none;
+}
+
+/* Custom classes for gold theme */
+.goldman-font {
+  font-family: 'Goldman', sans-serif;
+}
+
+.didot-font {
+  font-family: 'GFS Didot', serif;
+}
+
+.gold-text {
+  color: #FFD700;
+}
+
+.dark-bg {
+  background-color: #0F0F0F;
+}
+
+/* Button styling for gold theme */
+.gold-button {
+  background-color: #FFD700;
+  color: #000000;
+  transition: all 0.2s ease;
+}
+
+.gold-button:hover {
+  background-color: #E6C200;
+}
+
+.gold-button-outline {
+  border: 1px solid #000000;
+  background-color: transparent;
+  color: #000000;
+  transition: all 0.2s ease;
+}
+
+.gold-button-outline:hover {
+  background-color: #f0f0f0;
+}
+
+/* Fix for DaisyUI loading issues */
+:root {
+  --primary: 47.9 95.8% 53.1%;
+  --primary-content: 26 83.3% 14.1%;
+  --primary-focus: 47.9 95.8% 43.1%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-content: 24 9.8% 10%;
+  --secondary-focus: 60 4.8% 85.9%;
+  --accent: 60 4.8% 95.9%;
+  --accent-content: 24 9.8% 10%;
+  --accent-focus: 60 4.8% 85.9%;
+  --base-100: 0 0% 100%;
+  --base-200: 0 0% 96%;
+  --base-300: 0 0% 92%;
+  --base-content: 220 14.3% 4.1%;
+  --neutral: 220 14.3% 4.1%;
+  --neutral-content: 60 9.1% 97.8%;
+  --neutral-focus: 220 14.3% 0%;
+  --info: 217.2 91.2% 59.8%;
+  --success: 141.7 76.6% 36.3%;
+  --warning: 38 92.7% 50.2%;
+  --error: 0 91.2% 42.9%;
 }
 
 @layer base {

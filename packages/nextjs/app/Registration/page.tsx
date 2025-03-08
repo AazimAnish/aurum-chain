@@ -1,15 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "../../~/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../~/components/ui/card";
-import { Input } from "../../~/components/ui/input";
-import { Label } from "../../~/components/ui/label";
-import { Textarea } from "../../~/components/ui/textarea";
-import { Clipboard } from "lucide-react";
 import { createPublicClient, http } from "viem";
 import { waitForTransactionReceipt } from "viem/actions";
 import { hardhat } from "viem/chains";
+import { Clipboard } from "lucide-react";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface FormData {
@@ -48,206 +43,215 @@ const GoldRegistration = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const args = [
-        formData.weight,
-        formData.purity,
-        formData.description,
-        formData.certificationDetails,
-        formData.certificationDate,
-        formData.mineLocation,
-        formData.parentGoldId ? (formData.parentGoldId as `0x${string}`) : "0x000000000000000000000000",
-      ] as const;
+    console.log("Form data:", formData);
 
-      // Write to contract and get transaction hash
+    try {
+      if (!writeGoldLedgerAsync) {
+        console.error("Contract write function not available");
+        return;
+      }
+
       const txHash = await writeGoldLedgerAsync({
         functionName: "registerGold",
-        args,
+        args: [
+          formData.weight,
+          formData.purity,
+          formData.description,
+          formData.certificationDetails,
+          formData.certificationDate,
+          formData.mineLocation,
+          formData.parentGoldId ? formData.parentGoldId as `0x${string}` : "0x0", // Convert to proper hex format
+        ],
       });
-
-      if (!txHash) {
-        throw new Error("Failed to write to contract");
-      }
 
       console.log("Transaction hash:", txHash);
 
-      const publicClient = createPublicClient({
-        chain: hardhat,
-        transport: http(),
-      });
+      if (txHash) {
+        const publicClient = createPublicClient({
+          chain: hardhat,
+          transport: http(),
+        });
 
-      // Wait for transaction receipt
-      const receipt = await waitForTransactionReceipt(publicClient, {
-        hash: txHash,
-        timeout: 240000,
-      });
+        const receipt = await waitForTransactionReceipt(publicClient, {
+          hash: txHash as `0x${string}`,
+          timeout: 240000,
+        });
 
-      console.log("Transaction receipt:", receipt);
+        console.log("Transaction receipt:", receipt);
 
-      if (receipt.logs && receipt.logs.length > 0) {
-        const log = receipt.logs[0];
-        if (log.topics && log.topics.length > 1) {
-          const identifier = log.topics[1];
-          if (identifier) {
-            setHallmarkId(identifier.slice(0, 26));
-            setShowSuccess(true);
-            console.log("Hallmark ID set to:", identifier.slice(0, 26));
+        if (receipt.logs && receipt.logs.length > 0) {
+          const log = receipt.logs[0];
+          if (log.topics && log.topics.length > 1) {
+            const identifier = log.topics[1];
+            if (identifier) {
+              setHallmarkId(identifier.slice(0, 26));
+              setShowSuccess(true);
+              console.log("Hallmark ID set to:", identifier.slice(0, 26));
+            } else {
+              console.error("Invalid identifier in log topics");
+            }
           } else {
-            console.error("Invalid identifier in log topics");
+            console.error("No topics found in the log");
           }
         } else {
-          console.error("No topics found in the log");
+          console.error("No logs found in receipt");
         }
-      } else {
-        console.error("No logs found in receipt");
       }
     } catch (error) {
       console.error("Error during registration:", error);
-      // Here you might want to add some error state handling
-      // setError(error.message);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 text-white">
-      <Card className="w-full max-w-2xl p-4">
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-center text-white">Gold Registration</CardTitle>
-          <CardDescription className="text-center text-white">Register your gold with details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="weight" className="text-white">
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md border border-gray-100 overflow-hidden">
+          <div className="p-6 pb-4 border-b border-gray-100">
+            <h1 className="text-3xl font-bold text-center goldman-font text-gray-900">Gold Registration</h1>
+            <p className="text-center text-gray-600 mt-2">Register your gold with details</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
                   Weight (in grams or ounces)
-                </Label>
-                <Input
+                </label>
+                <input
+                  type="text"
                   id="weight"
                   name="weight"
                   value={formData.weight}
                   onChange={handleChange}
-                  className="text-white w-full"
+                  className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                  placeholder="Enter weight"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="purity" className="text-white">
+              <div>
+                <label htmlFor="purity" className="block text-sm font-medium text-gray-700 mb-1">
                   Purity
-                </Label>
-                <Input
+                </label>
+                <input
+                  type="text"
                   id="purity"
                   name="purity"
                   value={formData.purity}
                   onChange={handleChange}
+                  className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
                   placeholder="e.g., 24K, 22K, 18K"
-                  className="text-white w-full"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-white">
+            
+            <div className="mb-6">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                 Description
-              </Label>
-              <Textarea
+              </label>
+              <textarea
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                className="text-white w-full"
-              />
+                rows={4}
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                placeholder="Describe your gold item"
+              ></textarea>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="certificationDetails" className="text-white">
+            
+            <div className="mb-6">
+              <label htmlFor="certificationDetails" className="block text-sm font-medium text-gray-700 mb-1">
                 Certification Details
-              </Label>
-              <Input
+              </label>
+              <input
+                type="text"
                 id="certificationDetails"
                 name="certificationDetails"
                 value={formData.certificationDetails}
                 onChange={handleChange}
-                className="text-white w-full"
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                placeholder="Enter certification details"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="certificationDate" className="text-white">
+            
+            <div className="mb-6">
+              <label htmlFor="certificationDate" className="block text-sm font-medium text-gray-700 mb-1">
                 Certification Date
-              </Label>
-              <Input
+              </label>
+              <input
+                type="date"
                 id="certificationDate"
                 name="certificationDate"
-                type="date"
                 value={formData.certificationDate}
                 onChange={handleChange}
-                className="text-white w-full"
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="mineLocation" className="text-white">
+            
+            <div className="mb-6">
+              <label htmlFor="mineLocation" className="block text-sm font-medium text-gray-700 mb-1">
                 Mine Location
-              </Label>
-              <Input
+              </label>
+              <input
+                type="text"
                 id="mineLocation"
                 name="mineLocation"
                 value={formData.mineLocation}
                 onChange={handleChange}
-                className="text-white w-full"
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                placeholder="Enter mine location"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="parentGoldId" className="text-white">
-                Parent Gold ID
-              </Label>
-              <Input
+            
+            <div className="mb-8">
+              <label htmlFor="parentGoldId" className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Gold ID (if applicable)
+              </label>
+              <input
+                type="text"
                 id="parentGoldId"
                 name="parentGoldId"
-                value={formData.parentGoldId}
+                value={formData.parentGoldId || ""}
                 onChange={handleChange}
-                className="text-white w-full"
+                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
                 placeholder="Leave blank if not applicable"
               />
             </div>
+            
+            <div className="flex justify-center">
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                className="action-button bg-[#ECBD45] text-black hover:bg-[#D9AD3C]"
+              >
+                Register Gold
+              </button>
+            </div>
           </form>
-        </CardContent>
-        <CardFooter className="mt-4 sm:mt-6 md:mt-8">
-          <Button type="submit" onClick={handleSubmit} className="w-full text-black">
-            Register Gold
-          </Button>
-        </CardFooter>
-      </Card>
-      {showSuccess && (
-      <div className="flex items-center space-x-4">
-  <div className="flex-grow"> 
-    <Card className="mt-4 p-2">
-        <CardContent className="text-white pl-8 flex items-center">
-          <div className="flex items-center">
-            <p className="font-mono mr-2">Hallmark ID: {hallmarkId}</p>
-            <Clipboard
-              className="h-5 w-5 cursor-pointer text-gray-300 hover:text-white"
-              onClick={() => {
-                navigator.clipboard.writeText(hallmarkId);
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000); // Reset success message after 2 seconds
-              }}
-            />
-          </div>
-         
-        </CardContent>
-        {copySuccess && <div className="text-green-500 text-sm pl-8">Copied to clipboard!</div>}
-        
-      </Card>
+          
+          {showSuccess && (
+            <div className="p-6 border-t border-gray-100">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div className="text-green-700 font-medium text-center">Gold successfully registered!</div>
+                <div className="flex items-center justify-center mt-3 text-gray-700">
+                  <div className="mr-2">Your Hallmark ID:</div>
+                  <div className="font-mono bg-gray-100 p-2 rounded text-sm">{hallmarkId}</div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(hallmarkId);
+                      setCopySuccess(true);
+                      setTimeout(() => setCopySuccess(false), 2000);
+                    }}
+                    className="ml-2 text-gray-500 hover:text-gray-700 p-1"
+                  >
+                    <Clipboard className="w-5 h-5" />
+                  </button>
+                </div>
+                {copySuccess && <div className="text-green-600 text-sm text-center mt-2">Copied to clipboard!</div>}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-  
-      <Button
-            onClick={() => window.open(`/Track?id=${hallmarkId}`, '_blank')}
-            className="ml-4 hover:bg-yellow-600 text-black  "
-          >
-            Track
-      </Button>
-      </div>
-      
-     )} 
-       
-         
     </div>
   );
 };

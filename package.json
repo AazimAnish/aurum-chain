@@ -45,7 +45,9 @@
   },
   "dependencies": {
     "@anon-aadhaar/react": "^2.4.3",
+    "@emotion/react": "11.14.0",
     "ethers": "^6.13.4",
+    "framer-motion": "^12.4.10",
     "thirdweb": "^5.80.0"
   }
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import base from "../../public/base.jpg";
 import greekMobile from "../../public/greekMobile.png";
 import headsetGirl from "../../public/headsetGirl.png";
 import { Button } from "../../~/components/ui/button";
@@ -55,7 +54,9 @@ const Home: NextPage = () => {
             <p className="text-sm text-yellow-400 italic m-0 p-0" style={{ fontFamily: "'GFS Didot', serif" }}>
               Powered by
             </p>
-            <Image src={base} alt="Powered by Base" width={200} height={50} className="rounded-lg w-28" />
+            <div className="rounded-lg w-28 h-12 bg-yellow-400 flex items-center justify-center text-black font-bold">
+              AURUM
+            </div>
           </motion.div>
           <motion.h1
             animate={titleControls}
@@ -91,7 +92,14 @@ const Home: NextPage = () => {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image src={greekMobile} alt="Greek Mobile" layout="responsive" objectFit="cover" />
+        <Image 
+          src={greekMobile} 
+          alt="Greek Mobile" 
+          width={0}
+          height={0}
+          sizes="100vw"
+          style={{ width: "100%", height: "auto" }}
+        />
       </motion.div>
 
       <motion.div
@@ -100,7 +108,14 @@ const Home: NextPage = () => {
         animate={{ y: 0 }}
         transition={{ delay: 1.5, duration: 1 }}
       >
-        <Image src={headsetGirl} alt="Headset Girl" layout="responsive" objectFit="cover" />
+        <Image 
+          src={headsetGirl} 
+          alt="Headset Girl" 
+          width={0}
+          height={0}
+          sizes="100vw"
+          style={{ width: "100%", height: "auto" }}
+        />
       </motion.div>
 
       <motion.footer
