@@ -140,3 +140,52 @@ The global gold market is massive, with a market cap exceeding $11 trillion as o
 Ready to be part of the future of gold? Whether you're a gold enthusiast, a jewelry maker, or a tech-savvy investor, there's a place for you in our golden ecosystem.
 
 Let's make the gold industry shine brighter, together! ✨
+
+# Aurum-Chain: Blockchain-Powered Gold Tracking
+
+## New Development Experience
+
+We've optimized the project for better performance and simplified the development workflow:
+
+### Running the Project (New Simplified Method)
+
+To start the entire development environment with a single command:
+
+```bash
+yarn dev-all
+```
+
+This command will:
+1. Install all dependencies
+2. Start the Hardhat local blockchain
+3. Deploy contracts to the local blockchain
+4. Generate necessary files
+5. Start the Next.js development server with hot reload
+
+### Performance Optimizations
+
+We've made several optimizations to improve the project's performance:
+
+1. **Optimized DotPattern component** - Reduced the number of rendered dots and added memoization
+2. **Next.js Config Optimization** - Added SWC minification and other production optimizations
+3. **React Query Improvements** - Configured with optimal caching strategies
+4. **Tailwind CSS Optimization** - Improved build performance with JIT mode
+5. **Page Transitions** - Smoother navigation between pages
+
+### Original Commands (Still Available)
+
+You can still use the individual commands if needed:
+
+```bash
+# Start local blockchain
+yarn chain
+
+# Deploy contracts
+yarn deploy
+
+# Generate contract types
+yarn generate
+
+# Start Next.js dev server
+yarn start
+```
