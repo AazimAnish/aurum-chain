@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 import { ThirdwebScaffoldConnector } from "~~/components/scaffold-eth/ThirdwebScaffoldConnector";
+import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 
 type HeaderMenuLink = {
   label: string;
@@ -22,6 +23,10 @@ export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Register Gold",
     href: "/Registration",
+  },
+  {
+    label: "My Holdings",
+    href: "/Holdings",
   },
   {
     label: "Track Gold",
@@ -113,9 +118,13 @@ export const Header = () => {
         </div>
         
         {/* Connect Button */}
-        <div className="flex items-center">
+        {/* <div className="flex items-center">
           <ThirdwebScaffoldConnector />
-        </div>
+        </div> */}
+          <div className="navbar-end ">
+        <RainbowKitCustomConnectButton />
+        <FaucetButton />
+      </div>
       </div>
     </header>
   );

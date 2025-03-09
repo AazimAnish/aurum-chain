@@ -1,10 +1,13 @@
 //// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./GoldToken.sol";
+
 contract GoldLedger {
     struct GoldDetails {
         bytes12 uniqueIdentifier; // changes from bytes32 to bytes12
         string weight;
+        uint256 weightInGrams; // Added for tokenization
         string purity;
         string description;
         string certificationDetails;
@@ -12,13 +15,24 @@ contract GoldLedger {
         string mineLocation;
         bytes12 parentGoldId; // Changed from bytes32 to bytes12
         bool hasParentGoldId; // New field to indicate if parentGoldId is set
+        address owner; // Added to track ownership
     }
 
+    // Reference to the GoldToken contract
+    GoldToken public goldToken;
+
+    // Mapping from address to array of gold IDs owned by that address
+    mapping(address => bytes12[]) private ownerToGoldIds;
+    
     mapping(bytes12 => GoldDetails) private goldRegistry; // Changed from bytes32 to bytes12
     bytes12[] private goldIdentifiers; // Changed from bytes32 to bytes12
     uint256 public totalRegistrations;
 
     event GoldRegistered(bytes12 indexed uniqueIdentifier, address indexed registrar); // Changed from bytes32 to bytes12
+
+    constructor(address _goldTokenAddress) {
+        goldToken = GoldToken(_goldTokenAddress);
+    }
 
     function registerGold(
         string calldata _weight,
@@ -29,27 +43,57 @@ contract GoldLedger {
         string calldata _mineLocation,
         bytes12 _parentGoldId // Changed from bytes32 to bytes12
     ) public returns (bytes12) { // Changed from bytes32 to bytes12
-     require(bytes(_weight).length > 0, "Weight cannot be empty");
-     require(bytes(_purity).length > 0, "Purity cannot be empty");
+        require(bytes(_weight).length > 0, "Weight cannot be empty");
+        require(bytes(_purity).length > 0, "Purity cannot be empty");
 
         bytes12 uniqueIdentifier = bytes12(keccak256(abi.encodePacked(block.timestamp, msg.sender, ++totalRegistrations))); // Changed from bytes32 to bytes12
+        
+        // Convert weight string to uint256 for tokenization
+        uint256 weightInGrams = parseWeight(_weight);
         
         goldRegistry[uniqueIdentifier] = GoldDetails({
             uniqueIdentifier: uniqueIdentifier,
             weight: _weight,
+            weightInGrams: weightInGrams,
             purity: _purity,
             description: _description,
             certificationDetails: _certificationDetails,
             certificationDate: _certificationDate,
             mineLocation: _mineLocation,
             parentGoldId: _parentGoldId, // Changed from bytes32 to bytes12
-            hasParentGoldId: _parentGoldId != bytes12(0) // Check if parentGoldId is set
+            hasParentGoldId: _parentGoldId != bytes12(0), // Check if parentGoldId is set
+            owner: msg.sender
         });
+        
         goldIdentifiers.push(uniqueIdentifier);
+        
+        // Add gold ID to owner's collection
+        ownerToGoldIds[msg.sender].push(uniqueIdentifier);
+        
+        // Mint tokens based on gold weight
+        goldToken.mintGoldTokens(msg.sender, weightInGrams);
 
         emit GoldRegistered(uniqueIdentifier, msg.sender);
 
         return uniqueIdentifier;
+    }
+
+    // Helper function to parse weight string to uint256
+    function parseWeight(string memory _weight) internal pure returns (uint256) {
+        // This is a simplified implementation
+        // In a production environment, you would need a more robust parser
+        // that handles different formats and units
+        bytes memory weightBytes = bytes(_weight);
+        uint256 result = 0;
+        
+        for (uint i = 0; i < weightBytes.length; i++) {
+            // Only process digits
+            if (uint8(weightBytes[i]) >= 48 && uint8(weightBytes[i]) <= 57) {
+                result = result * 10 + (uint8(weightBytes[i]) - 48);
+            }
+        }
+        
+        return result;
     }
 
     function getGoldDetails(bytes12 _uniqueIdentifier) public view returns (GoldDetails memory) { // Changed from bytes32 to bytes12
@@ -62,5 +106,15 @@ contract GoldLedger {
             allGoldDetails[i] = goldRegistry[goldIdentifiers[i]];
         }
         return allGoldDetails;
+    }
+    
+    // Get all gold IDs owned by an address
+    function getGoldByOwner(address _owner) external view returns (bytes12[] memory) {
+        return ownerToGoldIds[_owner];
+    }
+    
+    // Get total gold holdings (in grams) for an address
+    function getTotalGoldHoldings(address _owner) external view returns (uint256) {
+        return goldToken.getGoldHoldings(_owner);
     }
 }

@@ -6,12 +6,13 @@ import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { Toaster } from "react-hot-toast";
-import { ThirdwebProvider } from "thirdweb/react";
+// import { ThirdwebProvider } from "thirdweb/react";
 import { WagmiProvider } from "wagmi";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
 import ChatWidget from "~~/components/ChatWidget";
+import { ArweaveProvider } from "~~/contexts/ArweaveContext";
 import { useInitializeNativeCurrencyPrice } from "~~/hooks/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
@@ -62,23 +63,25 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
           _useTestAadhaar={false}
           _appName="Aurum Chain"
         >
-          <ProgressBar 
-            height="3px" 
-            color="#ECBD45" 
-            options={{ 
-              showSpinner: false,
-              minimum: 0.25, // Start showing progress at 25%
-            }} 
-            shallowRouting // Better performance with shallow routing
-          />
-          <RainbowKitProvider
-            avatar={BlockieAvatar}
-            theme={lightTheme()}
-          >
-            <ThirdwebProvider>
-              <ScaffoldEthApp>{children}</ScaffoldEthApp>
-            </ThirdwebProvider>
-          </RainbowKitProvider>
+          <ArweaveProvider>
+            <ProgressBar 
+              height="3px" 
+              color="#ECBD45" 
+              options={{ 
+                showSpinner: false,
+                minimum: 0.25, // Start showing progress at 25%
+              }} 
+              shallowRouting // Better performance with shallow routing
+            />
+            <RainbowKitProvider
+              avatar={BlockieAvatar}
+              theme={lightTheme()}
+            >
+              {/* <ThirdwebProvider> */}
+                <ScaffoldEthApp>{children}</ScaffoldEthApp>
+              {/* </ThirdwebProvider> */}
+            </RainbowKitProvider>
+          </ArweaveProvider>
         </AnonAadhaarProvider>
       </QueryClientProvider>
     </WagmiProvider>
