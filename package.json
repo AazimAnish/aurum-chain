@@ -38,6 +38,7 @@
   },
   "packageManager": "yarn@3.2.3",
   "devDependencies": {
+    "arlocal": "^1.1.66",
     "concurrently": "^8.2.2",
     "husky": "^8.0.1",
     "lint-staged": "^13.0.3"
@@ -50,6 +51,7 @@
     "@emotion/react": "11.14.0",
     "ethers": "^6.13.4",
     "framer-motion": "^12.4.10",
+    "react-hot-toast": "^2.4.0",
     "thirdweb": "^5.80.0"
   }
 }

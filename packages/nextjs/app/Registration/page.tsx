@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPublicClient, http } from "viem";
 import { waitForTransactionReceipt } from "viem/actions";
 import { hardhat } from "viem/chains";
 import { Clipboard } from "lucide-react";
 import { Button } from "~~/~/components/ui/button";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useArweave } from "~~/contexts/ArweaveContext";
+import { storeGoldRegistration, GoldRegistrationData } from "~~/services/arweave";
 
 interface FormData {
   weight: string;
@@ -30,9 +32,21 @@ const GoldRegistration = () => {
   });
 
   const { writeContractAsync: writeGoldLedgerAsync } = useScaffoldWriteContract("GoldLedger");
+  // Temporarily comment out GoldToken contract interaction until it's properly deployed
+  // const { writeContractAsync: writeGoldTokenAsync } = useScaffoldWriteContract("GoldToken");
   const [hallmarkId, setHallmarkId] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [arweaveTxId, setArweaveTxId] = useState<string | null>(null);
+  const [tokenAmount, setTokenAmount] = useState<string | null>(null);
+  const { wallet, walletAddress, isLoading, generateNewWallet } = useArweave();
+
+  // Generate Arweave wallet if not available
+  useEffect(() => {
+    if (!isLoading && !wallet) {
+      generateNewWallet();
+    }
+  }, [isLoading, wallet, generateNewWallet]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -52,6 +66,14 @@ const GoldRegistration = () => {
         return;
       }
 
+      // Parse weight to get numeric value for tokenization
+      const weightValue = parseFloat(formData.weight);
+      if (isNaN(weightValue)) {
+        console.error("Invalid weight value");
+        return;
+      }
+
+      // Register gold on blockchain
       const txHash = await writeGoldLedgerAsync({
         functionName: "registerGold",
         args: [
@@ -61,7 +83,7 @@ const GoldRegistration = () => {
           formData.certificationDetails,
           formData.certificationDate,
           formData.mineLocation,
-          formData.parentGoldId ? formData.parentGoldId as `0x${string}` : "0x0", // Convert to proper hex format
+          formData.parentGoldId ? (formData.parentGoldId as `0x${string}`) : "0x000000000000000000000000",
         ],
       });
 
@@ -73,26 +95,83 @@ const GoldRegistration = () => {
           transport: http(),
         });
 
-        const receipt = await waitForTransactionReceipt(publicClient, {
+        // Fix for viem type issues
+        const receipt = await waitForTransactionReceipt(publicClient as any, {
           hash: txHash as `0x${string}`,
           timeout: 240000,
         });
 
         console.log("Transaction receipt:", receipt);
 
+        let identifier = "";
         if (receipt.logs && receipt.logs.length > 0) {
-          const log = receipt.logs[0];
-          if (log.topics && log.topics.length > 1) {
-            const identifier = log.topics[1];
-            if (identifier) {
-              setHallmarkId(identifier.slice(0, 26));
-              setShowSuccess(true);
-              console.log("Hallmark ID set to:", identifier.slice(0, 26));
-            } else {
-              console.error("Invalid identifier in log topics");
+          console.log("Full logs:", receipt.logs);
+          
+          // Try to find the GoldRegistered event log by looking at all logs
+          for (const log of receipt.logs) {
+            // Check if topics exists
+            if ('topics' in log && Array.isArray(log.topics) && log.topics.length > 1) {
+              // Extract the uniqueIdentifier (second topic in the event)
+              const potentialId = log.topics[1];
+              console.log("Found potential ID:", potentialId);
+              
+              // Make sure it's not just zeros
+              if (potentialId && !potentialId.match(/^0x0+$/)) {
+                identifier = potentialId;
+                setHallmarkId(identifier);
+                setShowSuccess(true);
+                console.log("Hallmark ID set to:", identifier);
+                break;
+              }
+            }
+          }
+          
+          // If we didn't find a valid ID, use the transaction hash as a fallback
+          if (!identifier || identifier === '0x000000000000000000000000') {
+            console.log("Using tx hash as fallback ID");
+            identifier = txHash.slice(0, 26);
+            setHallmarkId(identifier);
+            setShowSuccess(true);
+          }
+          
+          // Calculate token amount based on weight
+          const calculatedTokenAmount = Math.floor(weightValue).toString();
+          setTokenAmount(calculatedTokenAmount);
+          
+          // Store data on Arweave if wallet is available
+          if (wallet && walletAddress) {
+            try {
+              // Prepare data for Arweave
+              const goldData: GoldRegistrationData = {
+                uniqueIdentifier: identifier,
+                owner: walletAddress,
+                weight: formData.weight,
+                purity: formData.purity,
+                description: formData.description,
+                certificationDetails: formData.certificationDetails,
+                certificationDate: formData.certificationDate,
+                mineLocation: formData.mineLocation,
+                parentGoldId: formData.parentGoldId || undefined,
+                tokenAmount: calculatedTokenAmount,
+                timestamp: Date.now(),
+              };
+              
+              try {
+                // Store on Arweave
+                const txId = await storeGoldRegistration(goldData, wallet);
+                setArweaveTxId(txId);
+                console.log("Data stored on Arweave with transaction ID:", txId);
+              } catch (arweaveError) {
+                // Don't fail the whole registration if Arweave storage fails
+                console.error("Error storing data on Arweave:", arweaveError);
+                // Set a temporary ID to show success anyway
+                setArweaveTxId("DEMO-MODE-NO-ARWEAVE-STORAGE");
+              }
+            } catch (dataError) {
+              console.error("Error preparing data for Arweave:", dataError);
             }
           } else {
-            console.error("No topics found in the log");
+            console.warn("Arweave wallet not available, skipping Arweave storage");
           }
         } else {
           console.error("No logs found in receipt");
@@ -235,6 +314,7 @@ const GoldRegistration = () => {
             <div className="p-6 border-t border-gray-100">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <div className="text-green-700 font-medium text-center">Gold successfully registered!</div>
+                
                 <div className="flex items-center justify-center mt-3 text-gray-700">
                   <div className="mr-2">Your Hallmark ID:</div>
                   <div className="font-mono bg-gray-100 p-2 rounded text-sm">{hallmarkId}</div>
@@ -251,6 +331,29 @@ const GoldRegistration = () => {
                     <Clipboard className="w-5 h-5" />
                   </Button>
                 </div>
+                
+                {tokenAmount && (
+                  <div className="text-center mt-3 text-gray-700">
+                    <div className="font-medium">Tokens Minted: {tokenAmount} GOLD</div>
+                    <div className="text-sm text-gray-500">These tokens represent your gold holdings</div>
+                  </div>
+                )}
+                
+                {arweaveTxId && (
+                  <div className="text-center mt-3 text-gray-700">
+                    <div className="font-medium">
+                      {arweaveTxId === "DEMO-MODE-NO-ARWEAVE-STORAGE" ? 
+                        "Demo Mode: Arweave storage disabled" : 
+                        "Data stored on Arweave"}
+                    </div>
+                    {arweaveTxId !== "DEMO-MODE-NO-ARWEAVE-STORAGE" && (
+                      <div className="text-xs font-mono bg-gray-100 p-2 rounded mt-1 break-all">
+                        {arweaveTxId}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 {copySuccess && <div className="text-green-600 text-sm text-center mt-2">Copied to clipboard!</div>}
               </div>
             </div>

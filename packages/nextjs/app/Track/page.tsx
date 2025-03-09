@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "~~/~/components/ui/button";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { GoldRegistrationData } from "~~/services/arweave";
 
 interface GoldDetails {
   uniqueIdentifier: string;
@@ -20,6 +21,7 @@ const GoldSearch = () => {
   const [searchId, setSearchId] = useState<string>("");
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [matchedGoldDetails, setMatchedGoldDetails] = useState<GoldDetails | null>(null);
+  const [localStorageGold, setLocalStorageGold] = useState<GoldRegistrationData[]>([]);
 
   const {
     data: allGoldDetails,
@@ -29,6 +31,22 @@ const GoldSearch = () => {
     contractName: "GoldLedger",
     functionName: "getAllGoldDetails",
   });
+
+  // Load simulated storage data
+  useEffect(() => {
+    // Check if we're in development mode
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost) {
+      try {
+        const storedData = JSON.parse(localStorage.getItem('arweaveSimulation') || '{}');
+        const goldItems: GoldRegistrationData[] = Object.values(storedData);
+        setLocalStorageGold(goldItems);
+        console.log("Loaded simulated gold data:", goldItems.length, "items");
+      } catch (error) {
+        console.error("Error loading simulated gold data:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Extract gold ID from URL if present
@@ -41,11 +59,51 @@ const GoldSearch = () => {
   }, []);
 
   useEffect(() => {
-    if (allGoldDetails && searchPerformed) {
-      const foundGold = allGoldDetails.find((gold: GoldDetails) => gold.uniqueIdentifier === searchId);
-      setMatchedGoldDetails(foundGold || null);
+    if (searchPerformed) {
+      // First, search in blockchain data
+      if (allGoldDetails) {
+        const foundGold = allGoldDetails.find((gold: GoldDetails) => 
+          gold.uniqueIdentifier === searchId || 
+          gold.uniqueIdentifier.toLowerCase() === searchId.toLowerCase()
+        );
+        
+        if (foundGold) {
+          setMatchedGoldDetails(foundGold);
+          return;
+        }
+      }
+      
+      // If not found and we have local storage data, search there
+      if (localStorageGold.length > 0) {
+        const foundLocalGold = localStorageGold.find(gold => 
+          gold.uniqueIdentifier === searchId || 
+          (typeof gold.uniqueIdentifier === 'string' && 
+           gold.uniqueIdentifier.toLowerCase() === searchId.toLowerCase())
+        );
+        
+        if (foundLocalGold) {
+          // Convert to GoldDetails format
+          const localGoldDetails: GoldDetails = {
+            uniqueIdentifier: foundLocalGold.uniqueIdentifier,
+            weight: foundLocalGold.weight,
+            purity: foundLocalGold.purity,
+            description: foundLocalGold.description,
+            certificationDetails: foundLocalGold.certificationDetails,
+            certificationDate: foundLocalGold.certificationDate,
+            mineLocation: foundLocalGold.mineLocation,
+            parentGoldId: foundLocalGold.parentGoldId || "",
+            hasParentGoldId: !!foundLocalGold.parentGoldId,
+          };
+          
+          setMatchedGoldDetails(localGoldDetails);
+          return;
+        }
+      }
+      
+      // No match found in either source
+      setMatchedGoldDetails(null);
     }
-  }, [allGoldDetails, searchId, searchPerformed]);
+  }, [allGoldDetails, localStorageGold, searchId, searchPerformed]);
 
   const handleSearch = () => {
     if (searchId) {
