@@ -160,8 +160,16 @@ const GoldHoldings = () => {
                           <span>ID: {item.uniqueIdentifier}</span>
                         </div>
                       </div>
-                      <div className="bg-amber-50 px-3 py-1 rounded-full text-amber-800 font-medium">
-                        {item.tokenAmount || "0"} GOLD
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="bg-amber-50 px-3 py-1 rounded-full text-amber-800 font-medium">
+                          {item.tokenAmount || "0"} GOLD
+                        </div>
+                        <a 
+                          href={`/Taxation?id=${encodeURIComponent(item.uniqueIdentifier)}`}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-medium transition"
+                        >
+                          Calculate Tax
+                        </a>
                       </div>
                     </div>
                   </div>

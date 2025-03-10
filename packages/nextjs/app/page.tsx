@@ -104,7 +104,7 @@ const CustomHero = () => {
             </p>
           </div>
           <div className="flex flex-row gap-3">
-            <Link href="/Registration" legacyBehavior passHref>
+            <Link href="/Login" legacyBehavior passHref>
               <Button variant="outline" size="lg" className="border-black text-black hover:bg-gray-50">
                 Register Gold
               </Button>

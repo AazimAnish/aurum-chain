@@ -3733,6 +3733,7 @@ __metadata:
     "@uniswap/v2-sdk": ^3.0.1
     abitype: 1.0.6
     ai: ^4.1.51
+    arlocal: ^1.1.66
     arweave: ^1.15.5
     autoprefixer: ^10.4.20
     blo: ^1.0.1

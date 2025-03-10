@@ -9,6 +9,7 @@ import { useOutsideClick } from "~~/hooks/scaffold-eth";
 import { ThirdwebScaffoldConnector } from "~~/components/scaffold-eth/ThirdwebScaffoldConnector";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 
+
 type HeaderMenuLink = {
   label: string;
   href: string;
@@ -22,15 +23,23 @@ export const menuLinks: HeaderMenuLink[] = [
   },
   {
     label: "Register Gold",
-    href: "/Registration",
+    href: "/Login",
   },
   {
-    label: "My Holdings",
-    href: "/Holdings",
+    label: "My Dashboard",
+    href: "/Dashboard",
   },
   {
     label: "Track Gold",
     href: "/Track",
+  },
+  {
+    label: "Taxation",
+    href: "/Taxation",
+  },
+  {
+    label: "Database Explorer",
+    href: "/debug/txs",
   },
   {
     label: "Debug Contracts",
@@ -117,14 +126,12 @@ export const Header = () => {
           )}
         </div>
         
-        {/* Connect Button */}
-        {/* <div className="flex items-center">
-          <ThirdwebScaffoldConnector />
-        </div> */}
-          <div className="navbar-end ">
-        <RainbowKitCustomConnectButton />
-        <FaucetButton />
-      </div>
+        {/* Wallet Section */}
+        <div className="flex items-center gap-2 ml-auto">
+
+          <RainbowKitCustomConnectButton />
+          <FaucetButton />
+        </div>
       </div>
     </header>
   );
