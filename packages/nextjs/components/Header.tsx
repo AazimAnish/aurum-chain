@@ -94,7 +94,7 @@ export const Header = () => {
               <Image alt="Aurum-Chain logo" className="cursor-pointer" fill src="/logo.svg" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold leading-tight goldman-font text-gray-900">AURUM-CHAIN</span>
+              <span className="font-bold leading-tight goldman-font header-title text-gray-900">AURUM-CHAIN</span>
               <span className="text-xs text-gray-600">Gold Tracking Platform</span>
             </div>
           </Link>

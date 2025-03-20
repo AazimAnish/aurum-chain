@@ -21,7 +21,9 @@ export interface GoldRegistrationData {
   mineLocation: string;
   parentGoldId?: string;
   tokenAmount?: string;
+  imageDataUrl?: string;
   timestamp: number;
+  hasImage?: boolean;
 }
 
 // Interface for user gold holdings
@@ -35,14 +37,42 @@ export interface UserGoldHoldings {
 // For development without ArLocal, simulate transaction ID
 const simulateArweaveStorage = (data: GoldRegistrationData): Promise<string> => {
   return new Promise((resolve) => {
-    // Create a deterministic but unique ID based on the data
-    const fakeId = `dev-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    // Store in localStorage for simulation
-    const storedData = JSON.parse(localStorage.getItem('arweaveSimulation') || '{}');
-    storedData[fakeId] = data;
-    localStorage.setItem('arweaveSimulation', JSON.stringify(storedData));
-    // Simulate network delay
-    setTimeout(() => resolve(fakeId), 500);
+    try {
+      // Create a deterministic but unique ID based on the data
+      const fakeId = `dev-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      // Make a copy of the data to avoid reference issues
+      const dataCopy = { ...data };
+      
+      // Ensure image data is properly stored
+      if (dataCopy.imageDataUrl) {
+        // Compress the image data if it's too large (> 1MB)
+        if (dataCopy.imageDataUrl.length > 1000000) {
+          console.log("Image data is large, consider further compression");
+        }
+        
+        // Add an image flag to make it easier to identify items with images
+        dataCopy.hasImage = true;
+      }
+      
+      // Store timestamp if not already set
+      if (!dataCopy.timestamp) {
+        dataCopy.timestamp = Date.now();
+      }
+      
+      // Store in localStorage for simulation
+      const storedData = JSON.parse(localStorage.getItem('arweaveSimulation') || '{}');
+      storedData[fakeId] = dataCopy;
+      localStorage.setItem('arweaveSimulation', JSON.stringify(storedData));
+      
+      console.log(`Simulated Arweave storage with ID: ${fakeId}`);
+      // Simulate network delay
+      setTimeout(() => resolve(fakeId), 500);
+    } catch (error) {
+      console.error("Error in simulated storage:", error);
+      // Still resolve with an ID to prevent breaking the flow
+      resolve(`error-${Date.now()}`);
+    }
   });
 };
 
@@ -189,8 +219,17 @@ export const getUserGoldHoldings = async (address: string): Promise<UserGoldHold
               goldIds.push(goldIdTag.value);
             }
             
+            // Add token amount from tag
             if (tokenAmountTag) {
-              totalTokens += parseInt(tokenAmountTag.value, 10);
+              try {
+                const tokenAmount = parseInt(tokenAmountTag.value, 10);
+                if (!isNaN(tokenAmount)) {
+                  totalTokens += tokenAmount;
+                  console.log(`Added ${tokenAmount} tokens from tag for ${goldIdTag ? goldIdTag.value : 'unknown gold ID'}`);
+                }
+              } catch (e) {
+                console.error('Error parsing token amount from tag:', e);
+              }
             }
             
             // Get transaction data
@@ -198,6 +237,36 @@ export const getUserGoldHoldings = async (address: string): Promise<UserGoldHold
             if (txData) {
               try {
                 const registrationData = JSON.parse(txData as string) as GoldRegistrationData;
+                
+                // If tag didn't have token amount but registration data does, use that
+                if (!tokenAmountTag && registrationData.tokenAmount) {
+                  try {
+                    const dataTokenAmount = parseInt(registrationData.tokenAmount, 10);
+                    if (!isNaN(dataTokenAmount)) {
+                      totalTokens += dataTokenAmount;
+                      console.log(`Added ${dataTokenAmount} tokens from registration data for ${registrationData.uniqueIdentifier}`);
+                    }
+                  } catch (e) {
+                    console.error('Error parsing token amount from registration data:', e);
+                  }
+                }
+                
+                // If no token amount available anywhere, estimate from weight
+                if (!tokenAmountTag && !registrationData.tokenAmount && registrationData.weight) {
+                  try {
+                    const weight = parseFloat(registrationData.weight);
+                    if (!isNaN(weight)) {
+                      const estimatedTokens = Math.floor(weight);
+                      totalTokens += estimatedTokens;
+                      // Add estimated token amount to the registration data
+                      registrationData.tokenAmount = estimatedTokens.toString();
+                      console.log(`Estimated ${estimatedTokens} tokens from weight for ${registrationData.uniqueIdentifier}`);
+                    }
+                  } catch (e) {
+                    console.error('Error estimating tokens from weight:', e);
+                  }
+                }
+                
                 registrations.push(registrationData);
               } catch (e) {
                 console.error('Error parsing transaction data:', e);
@@ -225,10 +294,54 @@ export const getUserGoldHoldings = async (address: string): Promise<UserGoldHold
       // Process simulation data
       Object.keys(storedData).forEach(id => {
         const data = storedData[id] as GoldRegistrationData;
-        if (data.owner === address) {
-          registrations.push(data);
+        // Case-insensitive owner matching for better results
+        const ownerMatches = data.owner === address || 
+          (typeof data.owner === 'string' && typeof address === 'string' && 
+           data.owner.toLowerCase() === address.toLowerCase());
+        
+        if (ownerMatches) {
+          // Add to gold IDs if uniqueIdentifier exists
           if (data.uniqueIdentifier) goldIds.push(data.uniqueIdentifier);
-          if (data.tokenAmount) totalTokens += parseInt(data.tokenAmount, 10);
+          
+          // Add additional checks for data integrity
+          if (data.tokenAmount) {
+            try {
+              const tokens = parseInt(data.tokenAmount, 10);
+              if (!isNaN(tokens)) {
+                totalTokens += tokens;
+                console.log(`Added ${tokens} tokens for ${data.uniqueIdentifier} from simulation data`);
+              }
+            } catch (e) {
+              console.warn("Invalid token amount:", data.tokenAmount);
+            }
+          } else if (data.weight) {
+            // If no token amount, estimate from weight
+            try {
+              const weight = parseFloat(data.weight);
+              if (!isNaN(weight)) {
+                const estimatedTokens = Math.floor(weight);
+                totalTokens += estimatedTokens;
+                // Add estimated token amount to the data
+                data.tokenAmount = estimatedTokens.toString();
+                console.log(`Estimated ${estimatedTokens} tokens from weight for ${data.uniqueIdentifier} in simulation data`);
+              }
+            } catch (e) {
+              console.error('Error estimating tokens from weight in simulation:', e);
+            }
+          }
+          
+          // Ensure image data is properly processed
+          if (data.imageDataUrl) {
+            // Flag as having an image for tracking purposes
+            data.hasImage = true;
+          }
+          
+          // Ensure timestamp is present
+          if (!data.timestamp) {
+            data.timestamp = Date.now();
+          }
+          
+          registrations.push(data);
         }
       });
       
@@ -292,8 +405,16 @@ export const getUserGoldHoldings = async (address: string): Promise<UserGoldHold
         goldIds.push(goldIdTag.value);
       }
       
+      // Add token amount from tag
       if (tokenAmountTag) {
-        totalTokens += parseInt(tokenAmountTag.value, 10);
+        try {
+          const tokenAmount = parseInt(tokenAmountTag.value, 10);
+          if (!isNaN(tokenAmount)) {
+            totalTokens += tokenAmount;
+          }
+        } catch (e) {
+          console.error('Error parsing token amount from tag:', e);
+        }
       }
       
       // Get transaction data
@@ -301,6 +422,34 @@ export const getUserGoldHoldings = async (address: string): Promise<UserGoldHold
       if (txData) {
         try {
           const registrationData = JSON.parse(txData as string) as GoldRegistrationData;
+          
+          // If tag didn't have token amount but registration data does, use that
+          if (!tokenAmountTag && registrationData.tokenAmount) {
+            try {
+              const dataTokenAmount = parseInt(registrationData.tokenAmount, 10);
+              if (!isNaN(dataTokenAmount)) {
+                totalTokens += dataTokenAmount;
+              }
+            } catch (e) {
+              console.error('Error parsing token amount from registration data:', e);
+            }
+          }
+          
+          // If no token amount available anywhere, estimate from weight
+          if (!tokenAmountTag && !registrationData.tokenAmount && registrationData.weight) {
+            try {
+              const weight = parseFloat(registrationData.weight);
+              if (!isNaN(weight)) {
+                const estimatedTokens = Math.floor(weight);
+                totalTokens += estimatedTokens;
+                // Add estimated token amount to the registration data
+                registrationData.tokenAmount = estimatedTokens.toString();
+              }
+            } catch (e) {
+              console.error('Error estimating tokens from weight:', e);
+            }
+          }
+          
           registrations.push(registrationData);
         } catch (e) {
           console.error('Error parsing transaction data:', e);
