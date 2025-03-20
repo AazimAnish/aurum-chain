@@ -57,6 +57,7 @@
     "@types/react": "^18.3.5",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "abitype": "1.0.6",
+    "arlocal": "^1.1.66",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.15.0",
     "eslint-config-next": "^14.0.4",

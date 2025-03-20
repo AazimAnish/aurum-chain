@@ -83,7 +83,48 @@ export const goldPrices = {
 // Helper function to get gold price for a specific date
 export const getGoldPrice = (date: string) => {
   const yearMonth = date.substring(0, 7); // Format: YYYY-MM
-  return goldPrices[yearMonth as keyof typeof goldPrices] || null;
+  
+  // First try exact match
+  const exactMatch = goldPrices[yearMonth as keyof typeof goldPrices];
+  if (exactMatch) return exactMatch;
+  
+  // If no exact match, find the nearest available date
+  console.log(`No exact match for ${yearMonth}, finding closest available date`);
+  
+  try {
+    // Get all available dates from the goldPrices object
+    const availableDates = Object.keys(goldPrices).sort();
+    
+    // If the date is before our earliest data, use the earliest
+    if (yearMonth < availableDates[0]) {
+      console.log(`Date ${yearMonth} is before our earliest data (${availableDates[0]}), using earliest available`);
+      return goldPrices[availableDates[0] as keyof typeof goldPrices];
+    }
+    
+    // If the date is after our latest data, use the latest
+    if (yearMonth > availableDates[availableDates.length - 1]) {
+      console.log(`Date ${yearMonth} is after our latest data (${availableDates[availableDates.length - 1]}), using latest available`);
+      return goldPrices[availableDates[availableDates.length - 1] as keyof typeof goldPrices];
+    }
+    
+    // Find the closest date that's earlier than the requested date
+    let closestDate = availableDates[0];
+    for (const availableDate of availableDates) {
+      if (availableDate <= yearMonth && availableDate > closestDate) {
+        closestDate = availableDate;
+      }
+    }
+    
+    console.log(`Using ${closestDate} as closest match for ${yearMonth}`);
+    return goldPrices[closestDate as keyof typeof goldPrices];
+  } catch (error) {
+    console.error("Error finding closest date:", error);
+    
+    // As a fallback, use the most recent date
+    const fallbackDate = "2024-01"; // Hardcoded fallback
+    console.log(`Using fallback date ${fallbackDate} due to error`);
+    return goldPrices[fallbackDate as keyof typeof goldPrices];
+  }
 };
 
 // Helper function to calculate value based on weight and price

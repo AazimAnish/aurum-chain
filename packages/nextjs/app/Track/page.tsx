@@ -15,6 +15,7 @@ interface GoldDetails {
   mineLocation: string;
   parentGoldId: string;
   hasParentGoldId: boolean;
+  imageDataUrl?: string;
 }
 
 const GoldSearch = () => {
@@ -93,6 +94,7 @@ const GoldSearch = () => {
             mineLocation: foundLocalGold.mineLocation,
             parentGoldId: foundLocalGold.parentGoldId || "",
             hasParentGoldId: !!foundLocalGold.parentGoldId,
+            imageDataUrl: foundLocalGold.imageDataUrl,
           };
           
           setMatchedGoldDetails(localGoldDetails);
@@ -117,6 +119,17 @@ const GoldSearch = () => {
         <h3 className="text-xl font-bold goldman-font">Gold Details</h3>
       </div>
       <div className="p-6">
+        {details.imageDataUrl && (
+          <div className="mb-6 flex justify-center">
+            <div className="w-48 h-48 rounded-lg border border-gray-200 overflow-hidden">
+              <img 
+                src={details.imageDataUrl} 
+                alt={details.description || "Gold item"} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="form-group">
             <label className="form-label">Weight</label>
@@ -164,7 +177,7 @@ const GoldSearch = () => {
             <p className="text-center text-gray-600 mb-4">Search for gold details using the unique identifier</p>
           </div>
           
-          <div className="p-6">
+          <div className="p-6 track-content">
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <input
                 type="text"
@@ -185,7 +198,13 @@ const GoldSearch = () => {
                 size="lg"
                 className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C] sm:flex-shrink-0"
               >
-                Search
+                {isLoading ? (
+                  <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
               </Button>
             </div>
 

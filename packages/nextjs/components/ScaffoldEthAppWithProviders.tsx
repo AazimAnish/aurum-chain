@@ -60,7 +60,7 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <AnonAadhaarProvider
-          _useTestAadhaar={false}
+          _useTestAadhaar={true}
           _appName="Aurum Chain"
         >
           <ArweaveProvider>

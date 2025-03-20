@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPublicClient, http } from "viem";
 import { waitForTransactionReceipt } from "viem/actions";
 import { hardhat } from "viem/chains";
@@ -18,7 +18,11 @@ interface FormData {
   certificationDate: string;
   mineLocation: string;
   parentGoldId?: string; // Make parentGoldId optional
+  imageFile?: File; // Add image file field
 }
+
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
+const IMAGE_COMPRESSION_QUALITY = 0.7; // 70% quality for JPEG compression
 
 const GoldRegistration = () => {
   const [formData, setFormData] = useState<FormData>({
@@ -30,16 +34,21 @@ const GoldRegistration = () => {
     mineLocation: "",
     parentGoldId: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null); // Add state for image preview
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  
+  const formRef = useRef<HTMLFormElement>(null);
+  const initialRenderRef = useRef(true);
 
   const { writeContractAsync: writeGoldLedgerAsync } = useScaffoldWriteContract("GoldLedger");
-  // Temporarily comment out GoldToken contract interaction until it's properly deployed
-  // const { writeContractAsync: writeGoldTokenAsync } = useScaffoldWriteContract("GoldToken");
   const [hallmarkId, setHallmarkId] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [arweaveTxId, setArweaveTxId] = useState<string | null>(null);
   const [tokenAmount, setTokenAmount] = useState<string | null>(null);
-  const { wallet, walletAddress, isLoading, generateNewWallet } = useArweave();
+  const { wallet, walletAddress, isLoading, generateNewWallet, reconnectWallet } = useArweave();
 
   // Generate Arweave wallet if not available
   useEffect(() => {
@@ -48,21 +57,223 @@ const GoldRegistration = () => {
     }
   }, [isLoading, wallet, generateNewWallet]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Periodically check wallet connection
+  useEffect(() => {
+    // Check wallet connection immediately on mount
+    if (!isLoading && wallet && !walletAddress) {
+      console.log("Wallet exists but address is missing, attempting reconnection...");
+      reconnectWallet();
+    }
+
+    // Set up periodic check every 60 seconds
+    const intervalId = setInterval(() => {
+      if (!isLoading && wallet && !walletAddress) {
+        console.log("Periodic wallet check - reconnecting...");
+        reconnectWallet();
+      }
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [isLoading, wallet, walletAddress, reconnectWallet]);
+
+  // Save form data to sessionStorage to prevent loss on page refresh
+  useEffect(() => {
+    // Skip on initial render
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      
+      // Try to load saved form data on initial render
+      try {
+        const savedForm = sessionStorage.getItem('goldRegistrationForm');
+        if (savedForm) {
+          const parsed = JSON.parse(savedForm);
+          setFormData(parsed);
+          console.log("Loaded saved form data");
+        }
+      } catch (e) {
+        console.warn("Could not load saved form data", e);
+      }
+      
+      return;
+    }
+    
+    // Save form to sessionStorage whenever it changes
+    try {
+      sessionStorage.setItem('goldRegistrationForm', JSON.stringify(formData));
+    } catch (e) {
+      console.warn("Failed to save form data to sessionStorage", e);
+    }
+  }, [formData]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
       ...prevState,
       [name]: value,
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Compresses an image as a data URL
+  const compressImage = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onload = () => {
+          // Create canvas for compression
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          
+          // Determine dimensions while maintaining aspect ratio
+          let width = img.width;
+          let height = img.height;
+          
+          // Limit maximum dimension to 1000px
+          const maxDimension = 1000;
+          if (width > height && width > maxDimension) {
+            height = Math.round(height * (maxDimension / width));
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round(width * (maxDimension / height));
+            height = maxDimension;
+          }
+          
+          // Set canvas dimensions and draw image
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to compressed data URL (JPEG format with specified quality)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', IMAGE_COMPRESSION_QUALITY);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+        img.src = readerEvent.target?.result as string;
+      };
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  // Optimized image upload handler
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError(null);
+    
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Check file size
+      if (file.size > MAX_IMAGE_SIZE) {
+        setImageError(`Image too large (max ${MAX_IMAGE_SIZE/1024/1024}MB)`);
+        e.target.value = ''; // Reset the input
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setImageError('File must be an image');
+        e.target.value = ''; // Reset the input
+        return;
+      }
+      
+      try {
+        // Update form data with the file
+        setFormData(prevState => ({
+          ...prevState,
+          imageFile: file,
+        }));
+        
+        // Compress and create image preview
+        const compressedDataUrl = await compressImage(file);
+        setImagePreview(compressedDataUrl);
+      } catch (err) {
+        console.error('Error processing image:', err);
+        setImageError('Failed to process image');
+        e.target.value = ''; // Reset the input
+      }
+    }
+  }, [compressImage]);
+
+  const clearForm = useCallback(() => {
+    setFormData({
+      weight: "",
+      purity: "",
+      description: "",
+      certificationDetails: "",
+      certificationDate: "",
+      mineLocation: "",
+      parentGoldId: "",
+    });
+    setImagePreview(null);
+    setImageError(null);
+    setSubmitError(null);
+    
+    // Clear the file input
+    if (formRef.current) {
+      const fileInput = formRef.current.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
+    
+    // Clear sessionStorage
+    sessionStorage.removeItem('goldRegistrationForm');
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form data:", formData);
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
+      // First check if wallet is connected and if not, try to reconnect it
+      if (!walletAddress && wallet) {
+        console.log("Wallet found but not connected, attempting reconnection...");
+        await reconnectWallet();
+        
+        // If still not connected after reconnection attempt, show error
+        if (!walletAddress) {
+          setSubmitError("Wallet reconnection failed. Please refresh the page and try again.");
+          return;
+        }
+      }
+      
+      if (!wallet || !walletAddress) {
+        console.log("No wallet found or wallet not connected");
+        setSubmitError("No wallet connected. Please wait while we create or reconnect your wallet...");
+        
+        try {
+          // Try to generate a new wallet if none exists
+          await generateNewWallet();
+          
+          // Check if wallet was successfully created
+          if (!wallet || !walletAddress) {
+            setSubmitError("Failed to create wallet. Please refresh the page and try again.");
+            return;
+          }
+          
+          console.log("New wallet generated successfully");
+        } catch (walletError) {
+          console.error("Error generating wallet:", walletError);
+          setSubmitError("Failed to create wallet: " + (walletError instanceof Error ? walletError.message : "Unknown error"));
+          return;
+        }
+      }
+
       if (!writeGoldLedgerAsync) {
         console.error("Contract write function not available");
+        setSubmitError("Contract not available. Please check your connection and try again.");
         return;
       }
 
@@ -70,6 +281,7 @@ const GoldRegistration = () => {
       const weightValue = parseFloat(formData.weight);
       if (isNaN(weightValue)) {
         console.error("Invalid weight value");
+        setSubmitError("Please enter a valid weight value");
         return;
       }
 
@@ -138,10 +350,20 @@ const GoldRegistration = () => {
           const calculatedTokenAmount = Math.floor(weightValue).toString();
           setTokenAmount(calculatedTokenAmount);
           
+          // Double-check wallet connection before storing to Arweave
+          if (!wallet || !walletAddress) {
+            try {
+              console.log("Wallet connection lost before Arweave storage, attempting reconnection");
+              await reconnectWallet();
+            } catch (reconnectError) {
+              console.error("Failed to reconnect wallet for Arweave storage:", reconnectError);
+            }
+          }
+          
           // Store data on Arweave if wallet is available
           if (wallet && walletAddress) {
             try {
-              // Prepare data for Arweave
+              // Prepare data for Arweave, including image if available
               const goldData: GoldRegistrationData = {
                 uniqueIdentifier: identifier,
                 owner: walletAddress,
@@ -153,6 +375,7 @@ const GoldRegistration = () => {
                 mineLocation: formData.mineLocation,
                 parentGoldId: formData.parentGoldId || undefined,
                 tokenAmount: calculatedTokenAmount,
+                imageDataUrl: imagePreview || undefined, // Add image data URL if available
                 timestamp: Date.now(),
               };
               
@@ -161,6 +384,9 @@ const GoldRegistration = () => {
                 const txId = await storeGoldRegistration(goldData, wallet);
                 setArweaveTxId(txId);
                 console.log("Data stored on Arweave with transaction ID:", txId);
+                
+                // Clear form data from sessionStorage on success
+                sessionStorage.removeItem('goldRegistrationForm');
               } catch (arweaveError) {
                 // Don't fail the whole registration if Arweave storage fails
                 console.error("Error storing data on Arweave:", arweaveError);
@@ -171,16 +397,21 @@ const GoldRegistration = () => {
               console.error("Error preparing data for Arweave:", dataError);
             }
           } else {
-            console.warn("Arweave wallet not available, skipping Arweave storage");
+            console.warn("Arweave wallet not available, attempting to reconnect");
+            await reconnectWallet();
           }
         } else {
           console.error("No logs found in receipt");
+          setSubmitError("Transaction completed but no event logs were found. Registration may not have completed properly.");
         }
       }
     } catch (error) {
       console.error("Error during registration:", error);
+      setSubmitError("Failed to register gold: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }, [formData, imagePreview, wallet, walletAddress, writeGoldLedgerAsync, reconnectWallet, generateNewWallet]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -191,133 +422,208 @@ const GoldRegistration = () => {
             <p className="text-center text-gray-600 mt-2">Register your gold with details</p>
           </div>
           
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
-                  Weight (in grams or ounces)
+          {!showSuccess ? (
+            <form ref={formRef} onSubmit={handleSubmit} className="p-6 tax-content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
+                    Weight (in grams or ounces)
+                  </label>
+                  <input
+                    type="text"
+                    id="weight"
+                    name="weight"
+                    value={formData.weight}
+                    onChange={handleChange}
+                    className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                    placeholder="Enter weight"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="purity" className="block text-sm font-medium text-gray-700 mb-1">
+                    Purity
+                  </label>
+                  <input
+                    type="text"
+                    id="purity"
+                    name="purity"
+                    value={formData.purity}
+                    onChange={handleChange}
+                    className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                    placeholder="e.g., 24K, 22K, 18K"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+              
+              {/* Gold Image Upload Section */}
+              <div className="mb-6">
+                <label htmlFor="goldImage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Gold Image
+                </label>
+                <div className="flex flex-col items-center">
+                  <div className="w-full p-3 rounded-md border border-gray-300 bg-white">
+                    <input
+                      type="file"
+                      id="goldImage"
+                      name="goldImage"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full text-sm text-gray-900"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {imageError && (
+                    <div className="mt-2 text-sm text-red-600">
+                      {imageError}
+                    </div>
+                  )}
+                  {imagePreview && (
+                    <div className="mt-4 border border-gray-200 rounded-md p-2">
+                      <img 
+                        src={imagePreview} 
+                        alt="Gold preview" 
+                        className="max-h-40 object-contain mx-auto"
+                      />
+                      <p className="text-xs text-gray-500 text-center mt-1">
+                        The image has been optimized for storage
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={4}
+                  className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                  placeholder="Describe your gold item"
+                  required
+                  disabled={isSubmitting}
+                ></textarea>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="certificationDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                  Certification Details
                 </label>
                 <input
                   type="text"
-                  id="weight"
-                  name="weight"
-                  value={formData.weight}
+                  id="certificationDetails"
+                  name="certificationDetails"
+                  value={formData.certificationDetails}
                   onChange={handleChange}
                   className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Enter weight"
+                  placeholder="Enter certification details"
+                  required
+                  disabled={isSubmitting}
                 />
               </div>
-              <div>
-                <label htmlFor="purity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Purity
+              
+              <div className="mb-6">
+                <label htmlFor="certificationDate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Certification Date
+                </label>
+                <input
+                  type="date"
+                  id="certificationDate"
+                  name="certificationDate"
+                  value={formData.certificationDate}
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="mineLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mine Location
                 </label>
                 <input
                   type="text"
-                  id="purity"
-                  name="purity"
-                  value={formData.purity}
+                  id="mineLocation"
+                  name="mineLocation"
+                  value={formData.mineLocation}
                   onChange={handleChange}
                   className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="e.g., 24K, 22K, 18K"
+                  placeholder="Enter mine location"
+                  required
+                  disabled={isSubmitting}
                 />
               </div>
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={4}
-                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                placeholder="Describe your gold item"
-              ></textarea>
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="certificationDetails" className="block text-sm font-medium text-gray-700 mb-1">
-                Certification Details
-              </label>
-              <input
-                type="text"
-                id="certificationDetails"
-                name="certificationDetails"
-                value={formData.certificationDetails}
-                onChange={handleChange}
-                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                placeholder="Enter certification details"
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="certificationDate" className="block text-sm font-medium text-gray-700 mb-1">
-                Certification Date
-              </label>
-              <input
-                type="date"
-                id="certificationDate"
-                name="certificationDate"
-                value={formData.certificationDate}
-                onChange={handleChange}
-                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="mineLocation" className="block text-sm font-medium text-gray-700 mb-1">
-                Mine Location
-              </label>
-              <input
-                type="text"
-                id="mineLocation"
-                name="mineLocation"
-                value={formData.mineLocation}
-                onChange={handleChange}
-                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                placeholder="Enter mine location"
-              />
-            </div>
-            
-            <div className="mb-8">
-              <label htmlFor="parentGoldId" className="block text-sm font-medium text-gray-700 mb-1">
-                Parent Gold ID (if applicable)
-              </label>
-              <input
-                type="text"
-                id="parentGoldId"
-                name="parentGoldId"
-                value={formData.parentGoldId || ""}
-                onChange={handleChange}
-                className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
-                placeholder="Leave blank if not applicable"
-              />
-            </div>
-            
-            <div className="flex justify-center">
-              <Button
-                type="submit"
-                onClick={handleSubmit}
-                variant="default"
-                size="lg" 
-                className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C]"
-              >
-                Register Gold
-              </Button>
-            </div>
-          </form>
-          
-          {showSuccess && (
+              
+              <div className="mb-8">
+                <label htmlFor="parentGoldId" className="block text-sm font-medium text-gray-700 mb-1">
+                  Parent Gold ID (if applicable)
+                </label>
+                <input
+                  type="text"
+                  id="parentGoldId"
+                  name="parentGoldId"
+                  value={formData.parentGoldId || ""}
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                  placeholder="Leave blank if not applicable"
+                  disabled={isSubmitting}
+                />
+              </div>
+              
+              {/* Display error message if any */}
+              {submitError && (
+                <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {submitError}
+                </div>
+              )}
+              
+              <div className="flex justify-center space-x-3">
+                <Button
+                  type="button"
+                  onClick={clearForm}
+                  variant="outline"
+                  size="lg" 
+                  className="border-gray-300 text-gray-700"
+                  disabled={isSubmitting}
+                >
+                  Clear Form
+                </Button>
+                
+                <Button
+                  type="submit"
+                  variant="default"
+                  size="lg" 
+                  className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C]"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                      Registering...
+                    </>
+                  ) : (
+                    "Register Gold"
+                  )}
+                </Button>
+              </div>
+            </form>
+          ) : (
             <div className="p-6 border-t border-gray-100">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <div className="text-green-700 font-medium text-center">Gold successfully registered!</div>
                 
                 <div className="flex items-center justify-center mt-3 text-gray-700">
                   <div className="mr-2">Your Hallmark ID:</div>
-                  <div className="font-mono bg-gray-100 p-2 rounded text-sm">{hallmarkId}</div>
+                  <div className="font-mono bg-gray-100 p-2 rounded text-sm overflow-auto max-w-full">{hallmarkId}</div>
                   <Button
                     onClick={() => {
                       navigator.clipboard.writeText(hallmarkId);
@@ -326,11 +632,23 @@ const GoldRegistration = () => {
                     }}
                     variant="ghost"
                     size="sm"
-                    className="ml-2 text-gray-500 hover:text-gray-700 p-1"
+                    className="ml-2 text-gray-500 hover:text-gray-700 p-1 flex-shrink-0"
                   >
                     <Clipboard className="w-5 h-5" />
                   </Button>
                 </div>
+
+                {imagePreview && (
+                  <div className="flex justify-center mt-3">
+                    <div className="border border-gray-200 rounded-md p-2 max-w-xs">
+                      <img 
+                        src={imagePreview} 
+                        alt="Registered gold" 
+                        className="max-h-32 object-contain mx-auto"
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 {tokenAmount && (
                   <div className="text-center mt-3 text-gray-700">
@@ -355,6 +673,20 @@ const GoldRegistration = () => {
                 )}
                 
                 {copySuccess && <div className="text-green-600 text-sm text-center mt-2">Copied to clipboard!</div>}
+
+                <div className="mt-6 flex justify-center">
+                  <Button
+                    onClick={() => {
+                      setShowSuccess(false);
+                      clearForm();
+                    }}
+                    variant="default"
+                    size="lg"
+                    className="bg-[#ECBD45] text-black hover:bg-[#D9AD3C]"
+                  >
+                    Register Another Gold Item
+                  </Button>
+                </div>
               </div>
             </div>
           )}
