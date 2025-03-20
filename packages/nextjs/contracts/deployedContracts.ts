@@ -1025,6 +1025,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
   },
+  11155111: {},
 } as const;
 
 export default deployedContracts satisfies GenericContractsDeclaration;
