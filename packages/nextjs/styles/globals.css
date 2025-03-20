@@ -1,3 +1,4 @@
+
 /* Main stylesheet for Aurum-Chain application - Do not duplicate imports */
 @tailwind base;
 @tailwind components;
@@ -217,3 +218,9 @@ p {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+
+
+
+
+

@@ -105,13 +105,36 @@ const GoldRegistration = () => {
     }
   }, [formData]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value,
+    
+    // Special handling for parentGoldId to ensure it's valid bytes12
+    if (name === 'parentGoldId') {
+      // Remove any non-alphanumeric characters
+      const cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
+      
+      // Limit to 12 bytes (24 hex characters)
+      const truncatedValue = cleanValue.substring(0, 24);
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: truncatedValue
+      }));
+      
+      // Provide visual feedback if the input was truncated
+      if (cleanValue.length > 24) {
+        setSubmitError("Parent Gold ID truncated to 12 bytes (24 characters)");
+        setTimeout(() => setSubmitError(''), 3000);
+      }
+      return;
+    }
+    
+    // Regular handling for other fields
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
-  }, []);
+  };
 
   // Compresses an image as a data URL
   const compressImage = useCallback(async (file: File): Promise<string> => {
@@ -229,9 +252,23 @@ const GoldRegistration = () => {
     sessionStorage.removeItem('goldRegistrationForm');
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  // Format parentGoldId as bytes12 for blockchain submission
+  const formatParentGoldId = (value: string): `0x${string}` => {
+    if (!value || value.trim() === '') {
+      return "0x000000000000000000000000" as `0x${string}`;
+    }
+    
+    // If value already starts with 0x, remove it
+    const cleanValue = value.startsWith('0x') ? value.substring(2) : value;
+    
+    // Pad or truncate to exactly 24 hex characters (12 bytes)
+    const paddedValue = cleanValue.padEnd(24, '0').substring(0, 24);
+    
+    return `0x${paddedValue}` as `0x${string}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form data:", formData);
     
     setIsSubmitting(true);
     setSubmitError(null);
@@ -295,7 +332,7 @@ const GoldRegistration = () => {
           formData.certificationDetails,
           formData.certificationDate,
           formData.mineLocation,
-          formData.parentGoldId ? (formData.parentGoldId as `0x${string}`) : "0x000000000000000000000000",
+          formatParentGoldId(formData.parentGoldId || ""),
         ],
       });
 
@@ -377,6 +414,11 @@ const GoldRegistration = () => {
                 tokenAmount: calculatedTokenAmount,
                 imageDataUrl: imagePreview || undefined, // Add image data URL if available
                 timestamp: Date.now(),
+                // Initialize owners array with the current owner
+                owners: [{ 
+                  address: walletAddress, 
+                  date: formData.certificationDate 
+                }]
               };
               
               try {
@@ -411,7 +453,7 @@ const GoldRegistration = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, imagePreview, wallet, walletAddress, writeGoldLedgerAsync, reconnectWallet, generateNewWallet]);
+  };
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -576,7 +618,11 @@ const GoldRegistration = () => {
                   className="w-full p-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400"
                   placeholder="Leave blank if not applicable"
                   disabled={isSubmitting}
+                  maxLength={24}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 12 bytes (24 characters). Alphanumeric characters only.
+                </p>
               </div>
               
               {/* Display error message if any */}
@@ -697,3 +743,4 @@ const GoldRegistration = () => {
 };
 
 export default GoldRegistration;
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { LogInWithAnonAadhaar, useAnonAadhaar } from "@anon-aadhaar/react";
 import { Button } from "~~/~/components/ui/button";
@@ -9,10 +9,14 @@ import { Button } from "~~/~/components/ui/button";
 const LoginPage = () => {
   const [anonAadhaar] = useAnonAadhaar();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [redirecting, setRedirecting] = useState(false);
   const [countdown, setCountdown] = useState(3);
   // Add state to track simulated login status
   const [simulatedStatus, setSimulatedStatus] = useState<string | null>(null);
+
+  // Get the returnUrl from the URL parameters or default to Registration
+  const returnUrl = searchParams.get('returnUrl') || '/Registration';
 
   // Generate a fixed nullifier seed for development
   // In production, use a secure random value stored in user's localStorage
@@ -20,7 +24,8 @@ const LoginPage = () => {
 
   useEffect(() => {
     console.log("Anon Aadhaar status:", anonAadhaar.status);
-  }, [anonAadhaar]);
+    console.log("Return URL after login:", returnUrl);
+  }, [anonAadhaar, returnUrl]);
 
   // Get effective status (either real or simulated)
   const effectiveStatus = simulatedStatus || anonAadhaar.status;
@@ -37,12 +42,26 @@ const LoginPage = () => {
       setCountdown(prevCount => {
         if (prevCount <= 1) {
           clearInterval(timer);
-          router.push("/Registration");
+          // Redirect to the returnUrl instead of hardcoded Registration path
+          router.push(returnUrl);
           return 0;
         }
         return prevCount - 1;
       });
     }, 1000);
+  };
+
+  // Determine the button text based on the returnUrl
+  const getButtonText = () => {
+    if (redirecting) {
+      return `Redirecting in ${countdown}...`;
+    }
+    
+    if (returnUrl.includes('/Track')) {
+      return "Proceed to Transfer Ownership";
+    }
+    
+    return "Proceed to Registration";
   };
 
   return (
@@ -145,15 +164,12 @@ const LoginPage = () => {
                     className="bg-white text-[#ECBD45] hover:bg-gray-900 w-full font-medium border border-[#ECBD45] p-6 text-lg shadow-lg"
                     disabled={redirecting}
                   >
-                    {redirecting 
-                      ? `Redirecting in ${countdown}...` 
-                      : "Proceed to Registration"
-                    }
+                    {getButtonText()}
                   </Button>
                   
                   {redirecting && (
                     <p className="mt-4 text-green-600 text-sm animate-pulse">
-                      Authentication successful! Redirecting to registration page...
+                      Authentication successful! Redirecting...
                     </p>
                   )}
                 </div>

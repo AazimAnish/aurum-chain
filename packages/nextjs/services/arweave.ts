@@ -24,6 +24,7 @@ export interface GoldRegistrationData {
   imageDataUrl?: string;
   timestamp: number;
   hasImage?: boolean;
+  owners?: { address: string; date: string }[]; // Array to track ownership history
 }
 
 // Interface for user gold holdings
@@ -58,6 +59,16 @@ const simulateArweaveStorage = (data: GoldRegistrationData): Promise<string> => 
       // Store timestamp if not already set
       if (!dataCopy.timestamp) {
         dataCopy.timestamp = Date.now();
+      }
+      
+      // Initialize owners array if not already set
+      if (!dataCopy.owners || !Array.isArray(dataCopy.owners)) {
+        const registrationDate = dataCopy.certificationDate || new Date().toISOString().split('T')[0];
+        dataCopy.owners = [{
+          address: dataCopy.owner,
+          date: registrationDate
+        }];
+        console.log(`Initialized owners array for ${fakeId} with ${dataCopy.owner}`);
       }
       
       // Store in localStorage for simulation
@@ -487,3 +498,6 @@ export const getWalletAddress = async (jwk: any): Promise<string> => {
 };
 
 export default arweave; 
+
+
+

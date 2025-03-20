@@ -168,7 +168,7 @@ const ChatWidget = () => {
         {/* Input Form - Fixed at bottom */}
         <form onSubmit={handleSubmit} className="p-3 border-t border-gray-200 flex shrink-0">
           <input
-            className="flex-1 border border-gray-300 rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 border border-gray-300 rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
             onChange={handleInputChange}
             value={input}
             placeholder="Ask me something..."

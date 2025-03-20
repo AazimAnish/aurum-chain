@@ -40,6 +40,37 @@ const deployedContracts = {
           type: "event",
         },
         {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes12",
+              name: "uniqueIdentifier",
+              type: "bytes12",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "previousOwner",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "newOwner",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "date",
+              type: "string",
+            },
+          ],
+          name: "OwnershipTransferred",
+          type: "event",
+        },
+        {
           inputs: [],
           name: "getAllGoldDetails",
           outputs: [
@@ -99,6 +130,28 @@ const deployedContracts = {
                   internalType: "address",
                   name: "owner",
                   type: "address",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "address",
+                      name: "owner",
+                      type: "address",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "timestamp",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "string",
+                      name: "date",
+                      type: "string",
+                    },
+                  ],
+                  internalType: "struct GoldLedger.OwnershipRecord[]",
+                  name: "ownershipHistory",
+                  type: "tuple[]",
                 },
               ],
               internalType: "struct GoldLedger.GoldDetails[]",
@@ -194,6 +247,28 @@ const deployedContracts = {
                   internalType: "address",
                   name: "owner",
                   type: "address",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "address",
+                      name: "owner",
+                      type: "address",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "timestamp",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "string",
+                      name: "date",
+                      type: "string",
+                    },
+                  ],
+                  internalType: "struct GoldLedger.OwnershipRecord[]",
+                  name: "ownershipHistory",
+                  type: "tuple[]",
                 },
               ],
               internalType: "struct GoldLedger.GoldDetails",
@@ -296,6 +371,29 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes12",
+              name: "_uniqueIdentifier",
+              type: "bytes12",
+            },
+            {
+              internalType: "address",
+              name: "_newOwner",
+              type: "address",
+            },
+            {
+              internalType: "string",
+              name: "_transferDate",
+              type: "string",
+            },
+          ],
+          name: "transferOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
       ],

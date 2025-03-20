@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import "./GoldToken.sol";
 
 contract GoldLedger {
+    // Struct for tracking ownership history records
+    struct OwnershipRecord {
+        address owner;
+        uint256 timestamp; // Unix timestamp of ownership transfer
+        string date;       // Human-readable date string
+    }
+
     struct GoldDetails {
         bytes12 uniqueIdentifier; // changes from bytes32 to bytes12
         string weight;
@@ -15,7 +22,8 @@ contract GoldLedger {
         string mineLocation;
         bytes12 parentGoldId; // Changed from bytes32 to bytes12
         bool hasParentGoldId; // New field to indicate if parentGoldId is set
-        address owner; // Added to track ownership
+        address owner; // Current owner
+        OwnershipRecord[] ownershipHistory; // Array to track all historical owners
     }
 
     // Reference to the GoldToken contract
@@ -29,6 +37,7 @@ contract GoldLedger {
     uint256 public totalRegistrations;
 
     event GoldRegistered(bytes12 indexed uniqueIdentifier, address indexed registrar); // Changed from bytes32 to bytes12
+    event OwnershipTransferred(bytes12 indexed uniqueIdentifier, address indexed previousOwner, address indexed newOwner, string date);
 
     constructor(address _goldTokenAddress) {
         goldToken = GoldToken(_goldTokenAddress);
@@ -51,19 +60,26 @@ contract GoldLedger {
         // Convert weight string to uint256 for tokenization
         uint256 weightInGrams = parseWeight(_weight);
         
-        goldRegistry[uniqueIdentifier] = GoldDetails({
-            uniqueIdentifier: uniqueIdentifier,
-            weight: _weight,
-            weightInGrams: weightInGrams,
-            purity: _purity,
-            description: _description,
-            certificationDetails: _certificationDetails,
-            certificationDate: _certificationDate,
-            mineLocation: _mineLocation,
-            parentGoldId: _parentGoldId, // Changed from bytes32 to bytes12
-            hasParentGoldId: _parentGoldId != bytes12(0), // Check if parentGoldId is set
-            owner: msg.sender
-        });
+        // Create a new GoldDetails record
+        GoldDetails storage newGold = goldRegistry[uniqueIdentifier];
+        newGold.uniqueIdentifier = uniqueIdentifier;
+        newGold.weight = _weight;
+        newGold.weightInGrams = weightInGrams;
+        newGold.purity = _purity;
+        newGold.description = _description;
+        newGold.certificationDetails = _certificationDetails;
+        newGold.certificationDate = _certificationDate;
+        newGold.mineLocation = _mineLocation;
+        newGold.parentGoldId = _parentGoldId;
+        newGold.hasParentGoldId = _parentGoldId != bytes12(0);
+        newGold.owner = msg.sender;
+        
+        // Initialize ownership history with the first owner (registrar)
+        newGold.ownershipHistory.push(OwnershipRecord({
+            owner: msg.sender,
+            timestamp: block.timestamp,
+            date: _certificationDate
+        }));
         
         goldIdentifiers.push(uniqueIdentifier);
         
@@ -76,6 +92,50 @@ contract GoldLedger {
         emit GoldRegistered(uniqueIdentifier, msg.sender);
 
         return uniqueIdentifier;
+    }
+
+    // Transfer ownership of a gold item to a new owner
+    function transferOwnership(bytes12 _uniqueIdentifier, address _newOwner, string calldata _transferDate) public {
+        require(_uniqueIdentifier != bytes12(0), "Invalid gold identifier");
+        require(_newOwner != address(0), "Invalid new owner address");
+        require(goldRegistry[_uniqueIdentifier].owner == msg.sender, "Only the current owner can transfer ownership");
+        
+        GoldDetails storage gold = goldRegistry[_uniqueIdentifier];
+        address previousOwner = gold.owner;
+        
+        // Update the current owner
+        gold.owner = _newOwner;
+        
+        // Add to ownership history
+        gold.ownershipHistory.push(OwnershipRecord({
+            owner: _newOwner,
+            timestamp: block.timestamp,
+            date: _transferDate
+        }));
+        
+        // Update mappings
+        // Remove from previous owner's collection
+        removeGoldIdFromOwner(previousOwner, _uniqueIdentifier);
+        
+        // Add to new owner's collection
+        ownerToGoldIds[_newOwner].push(_uniqueIdentifier);
+        
+        emit OwnershipTransferred(_uniqueIdentifier, previousOwner, _newOwner, _transferDate);
+    }
+    
+    // Helper function to remove a gold ID from an owner's collection
+    function removeGoldIdFromOwner(address _owner, bytes12 _goldId) private {
+        bytes12[] storage ownedGold = ownerToGoldIds[_owner];
+        for (uint256 i = 0; i < ownedGold.length; i++) {
+            if (ownedGold[i] == _goldId) {
+                // Swap with the last element and pop
+                if (i < ownedGold.length - 1) {
+                    ownedGold[i] = ownedGold[ownedGold.length - 1];
+                }
+                ownedGold.pop();
+                break;
+            }
+        }
     }
 
     // Helper function to parse weight string to uint256
